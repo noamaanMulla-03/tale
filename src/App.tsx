@@ -1,13 +1,12 @@
 import "./App.css";
-import { Button } from "./components/ui/button";
+import LoginPage from "./pages/LoginPage";
 
 function App() {
 
   	return (
-		// button from ui/button.tsx
-		<Button>
-			Hello, Tailwind CSS!
-		</Button>
+		<div className="App">
+			<LoginPage />
+		</div>
 	);
 
 }
