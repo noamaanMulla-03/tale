@@ -17,6 +17,12 @@
     /* Types */
     "types": ["vite/client", "node"],
 
+    /* Path Aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
