@@ -26,5 +26,14 @@ interface AuthResponse {
     token: string,
 };
 
+// interface for the session state in zustand store
+interface SessionState {
+    user: User | null;
+    token: string | null;
+    isAuthenticated: boolean;
+    login: (user: User, token: string) => void;
+    logout: () => void;
+};
+
 // export types
-export type { User, LoginCredentials, RegistrationData,AuthResponse };
+export type { User, LoginCredentials, RegistrationData, AuthResponse, SessionState };
