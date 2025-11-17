@@ -1,6 +1,7 @@
-// auth routes
+// define auth routes here
 import express from 'express';
 
+// initialize router
 const router = express.Router();
 
 // login route
@@ -15,4 +16,5 @@ router.post('/register', (req, res) => {
     res.send('Register route');
 });
 
+// export router
 export default router;
