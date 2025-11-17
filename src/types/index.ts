@@ -5,6 +5,20 @@ interface User {
     email: string,
 };
 
+// interface for login credentials
+// extends User interface by picking
+// only email
+interface LoginCredentials extends Pick<User, 'email'> {
+    password: string,
+}
+
+// interface for registration data
+// extends User interface by omitting
+// id
+interface RegistrationData extends Omit<User, 'id'> {
+    password: string,
+}
+
 // interface for the AuthResponse which contains
 // user object and token
 interface AuthResponse {
@@ -13,4 +27,4 @@ interface AuthResponse {
 };
 
 // export types
-export type { User, AuthResponse };
+export type { User, LoginCredentials, RegistrationData,AuthResponse };
