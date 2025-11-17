@@ -30,7 +30,7 @@ app.get('/', (_, res) => {
 app.use('/auth', authRoutes);
 
 // error handling middlewares
-app.use((err, _, res, _) => {
+app.use((err, _, res) => {
     console.error(`[-] Error: ${err.stack}`);
     res.status(500).json({ error: 'Something went wrong!' });
 });
