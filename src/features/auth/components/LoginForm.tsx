@@ -14,11 +14,46 @@ import {
     FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useState } from "react"
+import { loginUser } from "@/lib/api"
+import useAuthStore from "@/store/useAuthStore"
 
 export function LoginForm({
     className,
     ...props
 }: React.ComponentProps<"div">) {
+
+    // destructure login from auth store
+    const { login } = useAuthStore();
+    // component state for form fields
+    const [ email, setEmail ] = useState("");
+    const [ password, setPassword ] = useState("");
+    // error and loading states
+    const [ error, setError ] = useState<string | null>(null);
+    const [ isLoading, setIsLoading ] = useState<boolean>(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+
+        // prevent default form submission
+        e.preventDefault();
+        // set loading state
+        setIsLoading(true);
+        try {
+            // call login API
+            const response = await loginUser({ email, password });
+            // destructure user and token from response
+            const { user, token } = response;
+            // update auth store on successful login
+            login(user, token);
+        } catch(error) {
+            // set error message on failure
+            setError("Login failed. Please check your credentials and try again.");
+        } finally {
+            // set loading state to false after attempt
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className={cn("flex flex-col gap-6", className)} {...props}>
             <Card className="w-[480px] bg-[#2a2a2a]/95 backdrop-blur-xl border-white/20 shadow-2xl">
@@ -34,7 +69,12 @@ export function LoginForm({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form className="space-y-6">
+                    <form  onClick={handleSubmit} className="space-y-6">
+                        {error && (
+                            <div className="text-red-500 text-sm mb-4">
+                                {error}
+                            </div>
+                        )}
                         <FieldGroup>
                             <Field>
                                 <FieldLabel htmlFor="email" className="text-gray-300">Email</FieldLabel>
@@ -44,6 +84,7 @@ export function LoginForm({
                                     placeholder="Enter your email"
                                     required
                                     className="h-11 bg-[#3a3a3a] border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500"
+                                    onChange={(e) => setEmail(e.target.value)}
                                 />
                             </Field>
 
@@ -63,6 +104,7 @@ export function LoginForm({
                                     required
                                     placeholder="Enter your password"
                                     className="h-11 bg-[#3a3a3a] border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500"
+                                    onChange={(e) => setPassword(e.target.value)}
                                 />
                             </Field>
 
@@ -71,7 +113,7 @@ export function LoginForm({
                                     type="submit"
                                     className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
                                 >
-                                    Sign in
+                                    { isLoading ? "Logging in..." : "Log In" }
                                 </Button>
                             </Field>
 

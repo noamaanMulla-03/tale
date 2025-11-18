@@ -7,7 +7,9 @@ const router = express.Router();
 // login route
 router.post('/login', (req, res) => {
     // handle login logic here
-    res.send('Login route');
+    console.log(req.body);
+    // res.send('Login route');
+    res.sendStatus(404);
 });
 
 // register route

@@ -5,7 +5,7 @@ import axios from 'axios';
 import API_URL from '@/config';
 
 // import User and AuthResponse interfaces
-import { AuthResponse, LoginCredentials } from '../types/index';
+import { AuthResponse, LoginCredentials } from '@/types/index';
 
 // create axios instance
 const api = axios.create({
