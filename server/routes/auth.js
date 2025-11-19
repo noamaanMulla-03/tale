@@ -1,22 +1,16 @@
 // define auth routes here
 import express from 'express';
 
+// import user controller
+import userController from '../controllers/userController.js';
+
 // initialize router
 const router = express.Router();
 
 // login route
-router.post('/login', (req, res) => {
-    // handle login logic here
-    console.log(req.body);
-    // res.send('Login route');
-    res.sendStatus(404);
-});
-
+router.post('/login', userController.getUserByEmail);
 // register route
-router.post('/register', (req, res) => {
-    // handle registration logic here
-    res.send('Register route');
-});
+router.post('/register', userController.createUser);
 
 // export router
 export default router;

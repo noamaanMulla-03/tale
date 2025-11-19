@@ -1,5 +1,5 @@
 // import the query function from db.js
-import query from "../db";
+import { query } from "../db.js";
 
 // user model object
 const userModel = {
@@ -7,7 +7,7 @@ const userModel = {
     // create a new user
     createUser: async (username, email, hashedPassword) => {
         // create query text and parameters
-        const queryText = "INSERT INTO users(username, email, password) VALUES($1, $2, $3) RETURNING id, username, email";
+        const queryText = "INSERT INTO users(username, email, password_hash) VALUES($1, $2, $3) RETURNING id, username, email";
         const queryParams = [username, email, hashedPassword];
 
         try {
@@ -21,11 +21,11 @@ const userModel = {
         }
     },
 
-    // find user by email and password
-    findUserByEmailandPassword: async (email, password) => {
+    // find user by email
+    findUserByEmail: async (email) => {
         // create query text and parameters
-        const queryText = "SELECT id, username, email FROM users WHERE username = $1 AND password = $2";
-        const queryParams = [email, password];
+        const queryText = "SELECT id, username, email, password_hash FROM users WHERE email = $1";
+        const queryParams = [email];
         try {
             // execute the query
             const res = await query(queryText, queryParams);
