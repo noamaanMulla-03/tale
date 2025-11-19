@@ -1,13 +1,20 @@
 // filename: server/index.js
 import express from 'express';
 
+// import dotenv to manage environment variables
+import dotenv from 'dotenv';
+dotenv.config();
+
+// import db connection
+import pool from './db.js';
+
 // import auth routes
 import authRoutes from './routes/auth.js';
 
 // initialize the server
 const app = express();
-// server port
-const PORT = 3000;
+// server port from environment variables
+const PORT = process.env.PORT || 3000;
 
 // middlewares
 app.use(express.json());
@@ -35,7 +42,11 @@ app.use((err, _, res) => {
     res.status(500).json({ error: 'Something went wrong!' });
 });
 
+// test database connection at startup
+pool.query('SELECT NOW()')
+    .catch(err => console.error(`[-] Database connection failed: ${err.message}`));
+
 // start the server
-app.listen(`${PORT}`, () => {
+app.listen(PORT, () => {
     console.log(`[+] Server running on Port: ${PORT}`)
 });

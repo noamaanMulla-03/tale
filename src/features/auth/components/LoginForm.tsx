@@ -71,7 +71,8 @@ export function LoginForm({
                 <CardContent>
                     <form  onClick={handleSubmit} className="space-y-6">
                         {error && (
-                            <div className="text-red-500 text-sm mb-4">
+                            // give the error a border of text-red-500 and make it thick
+                            <div className="text-red-500 text-sm mb-4 border-red-500 border p-2 rounded">
                                 {error}
                             </div>
                         )}
