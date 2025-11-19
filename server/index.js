@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // import db connection
-import pool from './db.js';
+import { pool } from './db.js';
 
 // import auth routes
 import authRoutes from './routes/auth.js';

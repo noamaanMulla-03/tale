@@ -30,5 +30,8 @@ pool.on('error', (err) => {
     process.exit(1);
 });
 
+// helper function to run db queries
+const query = (query, params) => pool.query(query, params)
+
 // export the pool instance
-export default pool;
+export { query, pool };
