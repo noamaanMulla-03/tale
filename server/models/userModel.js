@@ -21,19 +21,18 @@ const userModel = {
         }
     },
 
-    // find user by ID
-    findUserById: async (id) => {
+    // find user by email and password
+    findUserByEmailandPassword: async (email, password) => {
         // create query text and parameters
-        const queryText = "SELECT id, username, email FROM users WHERE id = $1";
-        const queryParams = [id];
-
+        const queryText = "SELECT id, username, email FROM users WHERE username = $1 AND password = $2";
+        const queryParams = [email, password];
         try {
             // execute the query
             const res = await query(queryText, queryParams);
             return res.rows[0];
         } catch (err) {
             // handle errors
-            console.error(`[-] Error finding user by ID: ${err.message}`);
+            console.error(`[-] Error finding user by email and password: ${err.message}`);
             throw err;
         }
     },
