@@ -37,7 +37,11 @@ const userController = {
             if (!isPasswordValid)
                 return res.status(401).json({error: 'Invalid Email or Password!'});
 
-            res.status(200).json(user);
+            // destructure user data to exclude password_hash
+            const userData = { id: user.id, username: user.username, email: user.email };
+
+            // respond with user data
+            res.status(200).json(userData);
 
         } catch (err) {
             // pass errors to error handling middleware

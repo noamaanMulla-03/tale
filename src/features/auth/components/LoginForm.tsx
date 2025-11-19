@@ -39,6 +39,7 @@ export function LoginForm({
         // set loading state
         setIsLoading(true);
         try {
+            setError(null);
             // call login API
             const response = await loginUser({ email, password });
             // destructure user and token from response
