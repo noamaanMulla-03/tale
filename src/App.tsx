@@ -1,11 +1,15 @@
 import "./App.css";
-import LoginPage from "./pages/LoginPage";
+import { SignUpForm } from "./features/auth/components/SignUpForm";
+import AuthPage from "./pages/AuthPage";
 
 function App() {
 
   	return (
 		<div className="App">
-			<LoginPage />
+			{/* <LoginPage /> */}
+            <AuthPage>
+                <SignUpForm />
+            </AuthPage>
 		</div>
 	);
 

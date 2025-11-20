@@ -1,6 +1,5 @@
-import { LoginForm } from "@/features/auth/components/LoginForm"
-
-export default function LoginPage() {
+// AuthPage component rendering dynamic auth forms with styled background
+export default function AuthPage({ children }: { children: React.ReactNode }) {
     return (
         <div className="relative flex min-h-screen items-center justify-center bg-[#1a1a1a] p-4 overflow-hidden">
             {/* Grid background pattern */}
@@ -11,7 +10,7 @@ export default function LoginPage() {
 
             {/* Content */}
             <div className="relative z-10 w-full flex items-center justify-center">
-                <LoginForm />
+                {children}
             </div>
         </div>
     )
