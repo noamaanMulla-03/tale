@@ -33,6 +33,7 @@ interface SessionState {
     isAuthenticated: boolean;
     login: (user: User, token: string) => void;
     logout: () => void;
+    checkAuth: () => boolean;
 };
 
 // export types

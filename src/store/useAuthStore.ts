@@ -47,9 +47,14 @@ const useAuthStore = create<SessionState>()(
 
             // check if user is authenticated
             checkAuth: () => {
+                // get current state of auth
+                const state = get();
+                // get token from local storage
                 const token = localStorage.getItem('token');
-                // return true if token exists and isAuthenticated is true
-                return !!token && get().isAuthenticated;
+                // return true if token exists 
+                // and isAuthenticated is true
+                // and token matches the stored token
+                return !!token && state.isAuthenticated && state.token === token;
             }
         }),
         {
