@@ -120,6 +120,7 @@ export function SignUpForm({
                                     id="username"
                                     type="text"
                                     placeholder="Enter a username"
+                                    value={username}
                                     required
                                     className="h-11 bg-[#3a3a3a] border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500"
                                     onChange={(e) => setUsername(e.target.value)}
@@ -132,6 +133,7 @@ export function SignUpForm({
                                     id="email"
                                     type="email"
                                     placeholder="Enter your email"
+                                    value={email}
                                     required
                                     className="h-11 bg-[#3a3a3a] border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500"
                                     onChange={(e) => setEmail(e.target.value)}
@@ -145,6 +147,7 @@ export function SignUpForm({
                                 <Input
                                     id="password"
                                     type="password"
+                                    value={password}
                                     required
                                     placeholder="Enter a password"
                                     className="h-11 bg-[#3a3a3a] border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500"
@@ -157,8 +160,9 @@ export function SignUpForm({
                                     <FieldLabel htmlFor="password" className="text-gray-300">Confirm Password</FieldLabel>
                                 </div>
                                 <Input
-                                    id="password"
+                                    id="confirmPassword"
                                     type="password"
+                                    value={confirmPassword}
                                     required
                                     placeholder="Confirm password"
                                     className="h-11 bg-[#3a3a3a] border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500"
@@ -169,7 +173,8 @@ export function SignUpForm({
                             <Field className="pt-2">
                                 <Button
                                     type="submit"
-                                    className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+                                    disabled={isLoading}
+                                    className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     { isLoading ? "Creating account..." : "Sign Up" }
                                 </Button>
@@ -177,10 +182,11 @@ export function SignUpForm({
 
                             <FieldDescription className="text-center text-xs text-gray-500">
                                 Already have an account?{" "}
-                                <Link to="/login">
-                                    <a className="text-orange-500 underline-offset-4 hover:underline font-medium">
-                                        Log in
-                                    </a>
+                                <Link 
+                                    className="text-orange-500 underline-offset-4 hover:underline font-medium" 
+                                    to="/login"
+                                >
+                                    Log in
                                 </Link>
                             </FieldDescription>
                         </FieldGroup>

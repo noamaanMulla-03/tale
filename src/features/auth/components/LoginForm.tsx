@@ -85,6 +85,7 @@ export function LoginForm({
                                     id="email"
                                     type="email"
                                     placeholder="Enter your email"
+                                    value={email}
                                     required
                                     className="h-11 bg-[#3a3a3a] border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500"
                                     onChange={(e) => setEmail(e.target.value)}
@@ -104,6 +105,7 @@ export function LoginForm({
                                 <Input
                                     id="password"
                                     type="password"
+                                    value={password}
                                     required
                                     placeholder="Enter your password"
                                     className="h-11 bg-[#3a3a3a] border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500"
@@ -114,7 +116,8 @@ export function LoginForm({
                             <Field className="pt-2">
                                 <Button
                                     type="submit"
-                                    className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+                                    disabled={isLoading}
+                                    className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     { isLoading ? "Logging in..." : "Log In" }
                                 </Button>
@@ -122,10 +125,11 @@ export function LoginForm({
 
                             <FieldDescription className="text-center text-xs text-gray-500">
                                 Don&apos;t have an account?{" "}
-                                <Link to="/signup">
-                                    <a href="#" className="text-orange-500 underline-offset-4 hover:underline font-medium">
-                                        Sign up
-                                    </a>
+                                <Link 
+                                    className="text-orange-500 underline-offset-4 hover:underline font-medium" 
+                                    to="/signup"
+                                >    
+                                    Sign up
                                 </Link>
                             </FieldDescription>
                         </FieldGroup>
