@@ -1,6 +1,16 @@
 // import user model
 import userModel from "../models/userModel.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+// generate token function
+const generateToken = (user) => {
+    return jwt.sign(
+        { id: user.id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+    );
+}
 
 // user controller object
 const userController = {
@@ -12,8 +22,11 @@ const userController = {
         try {
             // create the user using username, email, and hashed password
             const newUser = await userModel.createUser(username, email, hashedPassword);
+            // generate a token for the new user
+            const token = generateToken(newUser);
+
             // respond with the new user data
-            res.status(201).json(newUser);
+            res.status(201).json({user: newUser, token});
         } catch (err) {
             // pass errors to error handling middleware
             next(err);
@@ -21,7 +34,7 @@ const userController = {
     },
 
     // get user by ID
-    getUserByEmail: async (req, res, next) => {
+    loginUser: async (req, res, next) => {
         const { email, password } = req.body;
 
         try {
@@ -39,9 +52,11 @@ const userController = {
 
             // destructure user data to exclude password_hash
             const userData = { id: user.id, username: user.username, email: user.email };
+            // generate a jwt token
+            const token = generateToken(userData);
 
             // respond with user data
-            res.status(200).json(userData);
+            res.status(200).json({user: userData, token});
 
         } catch (err) {
             // pass errors to error handling middleware
