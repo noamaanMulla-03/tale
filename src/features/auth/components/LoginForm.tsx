@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { loginUser } from "@/lib/api"
 import useAuthStore from "@/store/useAuthStore"
+import { Link } from "react-router-dom"
 
 export function LoginForm({
     className,
@@ -121,9 +122,11 @@ export function LoginForm({
 
                             <FieldDescription className="text-center text-xs text-gray-500">
                                 Don&apos;t have an account?{" "}
-                                <a href="#" className="text-orange-500 underline-offset-4 hover:underline font-medium">
-                                    Sign up
-                                </a>
+                                <Link to="/signup">
+                                    <a href="#" className="text-orange-500 underline-offset-4 hover:underline font-medium">
+                                        Sign up
+                                    </a>
+                                </Link>
                             </FieldDescription>
                         </FieldGroup>
                     </form>

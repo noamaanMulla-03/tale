@@ -1,5 +1,5 @@
-// AuthPage component rendering dynamic auth forms with styled background
-export default function AuthPage({ children }: { children: React.ReactNode }) {
+// AuthPageWrapper component rendering dynamic auth forms with styled background
+export default function AuthPageWrapper({ children }: { children: React.ReactNode }) {
     return (
         <div className="relative flex min-h-screen items-center justify-center bg-[#1a1a1a] p-4 overflow-hidden">
             {/* Grid background pattern */}

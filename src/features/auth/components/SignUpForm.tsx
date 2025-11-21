@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { registerUser } from "@/lib/api"
 import useAuthStore from "@/store/useAuthStore"
+import { Link } from "react-router-dom"
 
 export function SignUpForm({
     className,
@@ -29,32 +30,66 @@ export function SignUpForm({
     const [ username, setUsername ] = useState("");
     const [ email, setEmail ] = useState("");
     const [ password, setPassword ] = useState("");
+    const [ confirmPassword, setConfirmPassword ] = useState("");
     // error and loading states
     const [ error, setError ] = useState<string | null>(null);
     const [ isLoading, setIsLoading ] = useState<boolean>(false);
 
+    // sign up form submit handler
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         // prevent default form submission
         e.preventDefault();
         // set loading state
         setIsLoading(true);
+        // set error state
+        setError(null);
+
         try {
-            setError(null);
+            // store password validation error status
+            const passwordValidationError = validatePasswords(password, confirmPassword);
+
+            // if password has discrepencies
+            if(passwordValidationError) {
+                // set error state to password error
+                setError(passwordValidationError);
+                // set loading state to false
+                setIsLoading(false);
+                // exit the function
+                return;
+            }
+
             // call registration API
             const response = await registerUser({ username, email, password });
             // destructure user and token from response
             const { user, token } = response;
             // update auth store on successful login
             login(user, token);
+
         } catch(error) {
             // set error message on failure
             setError("Registration failed! Please try again.");
+
         } finally {
             // set loading state to false after attempt
             setIsLoading(false);
         }
     };
+
+    // handler function to validate password
+    const validatePasswords = (password: string, confirmPassword: string) => {
+
+        // password should be of atleast 8 characters
+        if(password.length < 8)
+            return "Password should be of atleast 8 characters."
+        // password does not match confirm password
+
+        if(password !== confirmPassword)
+            return "Passwords does not match."
+
+        // password has no discrepency, return no error
+        return null;
+    }
 
     return (
         <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -117,20 +152,36 @@ export function SignUpForm({
                                 />
                             </Field>
 
+                            <Field>
+                                <div className="flex items-center justify-between mb-2">
+                                    <FieldLabel htmlFor="password" className="text-gray-300">Confirm Password</FieldLabel>
+                                </div>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    required
+                                    placeholder="Confirm password"
+                                    className="h-11 bg-[#3a3a3a] border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500"
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                />
+                            </Field>
+
                             <Field className="pt-2">
                                 <Button
                                     type="submit"
                                     className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
                                 >
-                                    { isLoading ? "Logging in..." : "Log In" }
+                                    { isLoading ? "Creating account..." : "Sign Up" }
                                 </Button>
                             </Field>
 
                             <FieldDescription className="text-center text-xs text-gray-500">
                                 Already have an account?{" "}
-                                <a href="#" className="text-orange-500 underline-offset-4 hover:underline font-medium">
-                                    Log in
-                                </a>
+                                <Link to="/login">
+                                    <a className="text-orange-500 underline-offset-4 hover:underline font-medium">
+                                        Log in
+                                    </a>
+                                </Link>
                             </FieldDescription>
                         </FieldGroup>
                     </form>
