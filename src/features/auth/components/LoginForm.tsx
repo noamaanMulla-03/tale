@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils"
+import { cn, toastError, toastSuccess } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
     Card,
@@ -30,7 +30,6 @@ export function LoginForm({
     const [ email, setEmail ] = useState("");
     const [ password, setPassword ] = useState("");
     // error and loading states
-    const [ error, setError ] = useState<string | null>(null);
     const [ isLoading, setIsLoading ] = useState<boolean>(false);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,16 +39,19 @@ export function LoginForm({
         // set loading state
         setIsLoading(true);
         try {
-            setError(null);
             // call login API
             const response = await loginUser({ email, password });
             // destructure user and token from response
             const { user, token } = response;
             // update auth store on successful login
             login(user, token);
-        } catch(error) {
+            
+            // success toast
+            toastSuccess(`Welcome back, ${user.username}!`)
+        } catch(error: any) {
             // set error message on failure
-            setError("Login failed. Please check your credentials and try again.");
+            const errorMessage = error.response?.data?.error || "Cannot reach the server at the moment!";
+            toastError(errorMessage);
         } finally {
             // set loading state to false after attempt
             setIsLoading(false);
@@ -72,12 +74,6 @@ export function LoginForm({
                 </CardHeader>
                 <CardContent>
                     <form  onSubmit={handleSubmit} className="space-y-6">
-                        {error && (
-                            // give the error a border of text-red-500 and make it thick
-                            <div className="text-red-500 text-sm mb-4 border-red-500 border p-2 rounded">
-                                {error}
-                            </div>
-                        )}
                         <FieldGroup>
                             <Field>
                                 <FieldLabel htmlFor="email" className="text-gray-300">Email</FieldLabel>

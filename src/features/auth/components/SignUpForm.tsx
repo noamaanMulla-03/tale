@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils"
+import { cn, toastError, toastSuccess } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
     Card,
@@ -32,7 +32,7 @@ export function SignUpForm({
     const [ password, setPassword ] = useState("");
     const [ confirmPassword, setConfirmPassword ] = useState("");
     // error and loading states
-    const [ error, setError ] = useState<string | null>(null);
+        // const [ error, setError ] = useState<string | null>(null);
     const [ isLoading, setIsLoading ] = useState<boolean>(false);
 
     // sign up form submit handler
@@ -43,7 +43,7 @@ export function SignUpForm({
         // set loading state
         setIsLoading(true);
         // set error state
-        setError(null);
+            // setError(null);
 
         try {
             // store password validation error status
@@ -52,7 +52,8 @@ export function SignUpForm({
             // if password has discrepencies
             if(passwordValidationError) {
                 // set error state to password error
-                setError(passwordValidationError);
+                    // setError(passwordValidationError);
+                toastError(passwordValidationError)
                 // set loading state to false
                 setIsLoading(false);
                 // exit the function
@@ -65,10 +66,13 @@ export function SignUpForm({
             const { user, token } = response;
             // update auth store on successful login
             login(user, token);
+            // success toast
+            toastSuccess(`Welcome aboard, ${user.username}!`)
 
         } catch(error) {
             // set error message on failure
-            setError("Registration failed! Please try again.");
+                // setError("Registration failed! Please try again.");
+            toastError("Registration failed! Please try again.");
 
         } finally {
             // set loading state to false after attempt
@@ -107,12 +111,12 @@ export function SignUpForm({
                 </CardHeader>
                 <CardContent>
                     <form  onSubmit={handleSubmit} className="space-y-6">
-                        {error && (
+                        {/* {error && (
                             // give the error a border of text-red-500 and make it thick
                             <div className="text-red-500 text-sm mb-4 border-red-500 border p-2 rounded">
                                 {error}
                             </div>
-                        )}
+                        )} */}
                         <FieldGroup>
                             <Field>
                                 <FieldLabel htmlFor="username" className="text-gray-300">Username</FieldLabel>

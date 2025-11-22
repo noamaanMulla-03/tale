@@ -3,11 +3,15 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { SignUpForm } from "./features/auth/components/SignUpForm";
 import { LoginForm } from "./features/auth/components/LoginForm";
 import AuthPageWrapper from "./pages/AuthPageWrapper";
+import { Toaster } from "sonner";
+import { toastConfig } from "./lib/utils";
 
 function App() {
 
     return (
         <div className="App">
+            <Toaster {...toastConfig}
+            /> 
             <Router>
                 <Routes>
                     <Route path="/" element={
