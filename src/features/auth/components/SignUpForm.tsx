@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { registerUser } from "@/lib/api"
 import useAuthStore from "@/store/useAuthStore"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 
 export function SignUpForm({
     className,
@@ -31,9 +31,10 @@ export function SignUpForm({
     const [ email, setEmail ] = useState("");
     const [ password, setPassword ] = useState("");
     const [ confirmPassword, setConfirmPassword ] = useState("");
-    // error and loading states
-        // const [ error, setError ] = useState<string | null>(null);
     const [ isLoading, setIsLoading ] = useState<boolean>(false);
+
+    // navigate hook
+    const navigate = useNavigate();
 
     // sign up form submit handler
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -68,6 +69,9 @@ export function SignUpForm({
             login(user, token);
             // success toast
             toastSuccess(`Welcome aboard, ${user.username}!`)
+
+            // navigate to email verification page
+            navigate('/verify-email');
 
         } catch(error) {
             // set error message on failure

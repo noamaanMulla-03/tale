@@ -27,10 +27,10 @@ export function LoginForm({
     // destructure login from auth store
     const { login } = useAuthStore();
     // component state for form fields
-    const [ email, setEmail ] = useState("");
-    const [ password, setPassword ] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     // error and loading states
-    const [ isLoading, setIsLoading ] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
@@ -45,10 +45,10 @@ export function LoginForm({
             const { user, token } = response;
             // update auth store on successful login
             login(user, token);
-            
+
             // success toast
             toastSuccess(`Welcome back, ${user.username}!`)
-        } catch(error: any) {
+        } catch (error: any) {
             // set error message on failure
             const errorMessage = error.response?.data?.error || "Cannot reach the server at the moment!";
             toastError(errorMessage);
@@ -75,7 +75,7 @@ export function LoginForm({
                 <CardContent>
 
                     {/* login form */}
-                    <form  onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
                         <FieldGroup>
 
                             {/* email field */}
@@ -123,17 +123,17 @@ export function LoginForm({
                                     disabled={isLoading}
                                     className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    { isLoading ? "Logging in..." : "Log In" }
+                                    {isLoading ? "Logging in..." : "Log In"}
                                 </Button>
                             </Field>
 
                             {/* signup link field */}
                             <FieldDescription className="text-center text-xs text-gray-500">
                                 Don&apos;t have an account?{" "}
-                                <Link 
-                                    className="text-orange-500 underline-offset-4 hover:underline font-medium" 
+                                <Link
+                                    className="text-orange-500 underline-offset-4 hover:underline font-medium"
                                     to="/signup"
-                                >    
+                                >
                                     Sign up
                                 </Link>
                             </FieldDescription>
