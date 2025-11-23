@@ -5,12 +5,10 @@ import { LoginForm } from "./features/auth/components/LoginForm";
 import AuthPageWrapper from "./pages/AuthPageWrapper";
 import { Toaster } from "sonner";
 import { toastConfig } from "./lib/utils";
-import EmailVerification from "./features/auth/components/EmailVerification";
+import { EmailVerification } from "./features/auth/components/EmailVerification";
 import EmailVerificationPageWrapper from "./pages/onBoarding/EmailVerificationPageWrapper";
-import useAuthStore from "./store/useAuthStore";
 
 function App() {
-    const { user } = useAuthStore();
 
     return (
         <div className="App">
@@ -44,17 +42,7 @@ function App() {
                     {/* route for email verification page */}
                     <Route path="/verify-email" element={
                         <EmailVerificationPageWrapper>
-                            <EmailVerification 
-                                email={user?.email || ''}
-                                onVerify={async (code) => {
-                                    // TODO: Implement verification logic
-                                    console.log('Verifying code:', code);
-                                }}
-                                onResend={async () => {
-                                    // TODO: Implement resend logic
-                                    console.log('Resending code');
-                                }}
-                            />
+                            <EmailVerification />
                         </EmailVerificationPageWrapper>
                     } />
                 </Routes>

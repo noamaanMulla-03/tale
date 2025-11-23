@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
-import { registerUser } from "@/lib/api"
+import { registerUser } from "../services/auth"
 import useAuthStore from "@/store/useAuthStore"
 import { Link, useNavigate } from "react-router-dom"
 

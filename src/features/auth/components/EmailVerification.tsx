@@ -4,14 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import useAuthStore from '@/store/useAuthStore';
+import { onVerify, onResend } from '../services/emailVerification';
 
-interface EmailVerificationProps {
-    email: string;
-    onVerify?: (code: string) => Promise<void>;
-    onResend?: () => Promise<void>;
-}
-
-function EmailVerification({ email, onVerify, onResend }: EmailVerificationProps) {
+// EmailVerification component
+export function EmailVerification() {
+    const { user } = useAuthStore();
     const [code, setCode] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
     const [isResending, setIsResending] = useState(false);
@@ -21,7 +19,7 @@ function EmailVerification({ email, onVerify, onResend }: EmailVerificationProps
         if (value.length === 6) {
             setIsVerifying(true);
             try {
-                await onVerify?.(value);
+                await onVerify(value);
                 toast.success('Email verified successfully!');
             } catch (error) {
                 toast.error('Invalid verification code');
@@ -35,7 +33,7 @@ function EmailVerification({ email, onVerify, onResend }: EmailVerificationProps
     const handleResend = async () => {
         setIsResending(true);
         try {
-            await onResend?.();
+            await onResend();
             toast.success('Verification code resent!');
             setCode('');
         } catch (error) {
@@ -56,44 +54,46 @@ function EmailVerification({ email, onVerify, onResend }: EmailVerificationProps
                 </CardTitle>
                 <CardDescription className="text-gray-400 text-sm">
                     We've sent a 6-digit verification code to{' '}
-                    <span className="font-medium text-white">{email}</span>
+                    <span className="font-medium text-white">{user?.email}</span>
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="flex flex-col items-center space-y-4">
-                    <InputOTP
-                        maxLength={6}
-                        value={code}
-                        onChange={handleComplete}
-                        disabled={isVerifying}
-                    >
-                        <InputOTPGroup className="gap-2">
-                            <InputOTPSlot
-                                index={0}
-                                className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
-                            />
-                            <InputOTPSlot
-                                index={1}
-                                className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
-                            />
-                            <InputOTPSlot
-                                index={2}
-                                className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
-                            />
-                            <InputOTPSlot
-                                index={3}
-                                className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
-                            />
-                            <InputOTPSlot
-                                index={4}
-                                className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
-                            />
-                            <InputOTPSlot
-                                index={5}
-                                className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
-                            />
-                        </InputOTPGroup>
-                    </InputOTP>
+                    <div className="relative">
+                        <InputOTP
+                            maxLength={6}
+                            value={code}
+                            onChange={handleComplete}
+                            disabled={isVerifying}
+                        >
+                            <InputOTPGroup className="gap-2">
+                                <InputOTPSlot
+                                    index={0}
+                                    className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
+                                />
+                                <InputOTPSlot
+                                    index={1}
+                                    className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
+                                />
+                                <InputOTPSlot
+                                    index={2}
+                                    className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
+                                />
+                                <InputOTPSlot
+                                    index={3}
+                                    className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
+                                />
+                                <InputOTPSlot
+                                    index={4}
+                                    className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
+                                />
+                                <InputOTPSlot
+                                    index={5}
+                                    className="h-14 w-14 text-xl bg-[#3a3a3a] border-white/10 text-white focus:border-orange-500 focus:ring-orange-500"
+                                />
+                            </InputOTPGroup>
+                        </InputOTP>
+                    </div>
 
                     {isVerifying && (
                         <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -103,12 +103,12 @@ function EmailVerification({ email, onVerify, onResend }: EmailVerificationProps
                     )}
                 </div>
 
-                <div className="text-center pt-4">
+                <div className="text-center pt-4 relative z-10">
                     <p className="text-sm text-gray-500">
                         Didn't receive the code?{' '}
                         <Button
                             variant="link"
-                            className="h-auto p-0 ml-4 text-sm font-medium text-orange-500 hover:text-orange-400 underline-offset-4 hover:underline"
+                            className="h-auto px-1 py-0 ml-4 text-sm font-medium text-orange-500 hover:text-orange-400 relative z-10"
                             onClick={handleResend}
                             disabled={isResending}
                         >
@@ -120,5 +120,3 @@ function EmailVerification({ email, onVerify, onResend }: EmailVerificationProps
         </Card>
     );
 }
-
-export default EmailVerification;
