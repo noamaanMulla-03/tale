@@ -12,13 +12,24 @@
   "app": {
     "windows": [
       {
-        "title": "tale",
-        "width": 800,
-        "height": 600
+        "title": "Tale",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "label": "main",
+        "decorations": true,
+        "transparent": false,
+        "hiddenTitle": false
       }
     ],
     "security": {
       "csp": null
+    },
+    "trayIcon": {
+      "id": "main-tray",
+      "iconPath": "icons/icon.png",
+      "tooltip": "Tale - Chat Application"
     }
   },
   "bundle": {

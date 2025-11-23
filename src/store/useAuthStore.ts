@@ -8,6 +8,9 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 // import the SessionState type for type safety
 import { SessionState } from '@/types';
 
+// import secure storage utility
+import { secureStorage } from '@/lib/storage';
+
 // create the authentication store using zustand
 const useAuthStore = create<SessionState>()(
     persist(
@@ -26,8 +29,8 @@ const useAuthStore = create<SessionState>()(
                     user: user,
                     token: token,
                 });
-                // store token in local storage
-                localStorage.setItem('token', token);
+                // store token in secure storage (macOS Keychain)
+                secureStorage.setItem('token', token).catch(console.error);
             },
 
             // define logout action to reset the store state
@@ -38,19 +41,19 @@ const useAuthStore = create<SessionState>()(
                     user: null,
                     token: null,
                 });
-                // remove token from local storage
-                localStorage.removeItem('token');
+                // remove token from secure storage
+                secureStorage.removeItem('token').catch(console.error);
             },
 
             // helper fx to get the current auth token
             getToken: () => get().token,
 
             // check if user is authenticated
-            checkAuth: () => {
+            checkAuth: async () => {
                 // get current state of auth
                 const state = get();
-                // get token from local storage
-                const token = localStorage.getItem('token');
+                // get token from secure storage
+                const token = await secureStorage.getItem('token');
                 // return true if token exists 
                 // and isAuthenticated is true
                 // and token matches the stored token
@@ -60,8 +63,25 @@ const useAuthStore = create<SessionState>()(
         {
             // unique name for the storage
             name: 'auth-storage',
-            // use localStorage for persistence
-            storage: createJSONStorage(() => localStorage),
+            // use secure storage for persistence
+            storage: createJSONStorage(() => ({
+                // get item from secure storage
+                getItem: async (name) => {
+                    const value = await secureStorage.getItem(name);
+                    return value;
+                },
+                
+                // set item in secure storage
+                setItem: async (name, value) => {
+                    await secureStorage.setItem(name, value);
+                },
+
+                // remove item from secure storage
+                removeItem: async (name) => {
+                    await secureStorage.removeItem(name);
+                }
+            })),
+            
             // only persist these fields
             partialize: (state) => ({
                 user: state.user,
