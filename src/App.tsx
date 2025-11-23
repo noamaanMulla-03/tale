@@ -10,10 +10,13 @@ function App() {
 
     return (
         <div className="App">
+            {/* toast notification container */}
             <Toaster {...toastConfig}
             /> 
             <Router>
                 <Routes>
+
+                    {/* Default route to login page */}
                     <Route path="/" element={
                         <AuthPageWrapper>
                             <LoginForm />

@@ -6,6 +6,7 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs))
 }
 
+// toast notification configuration and helper functions
 export const toastConfig = {
     position: "top-center" as const,
     richColors: true,
@@ -23,6 +24,8 @@ export const toastConfig = {
         className: 'font-medium',
         descriptionClassName: 'text-gray-400 text-sm',
     },
+
+    // custom styles for different toast types
     success: {
         style: {
             background: 'hsl(0 0% 16.5% / 0.95)',
@@ -47,6 +50,7 @@ export const toastConfig = {
     },
 };
 
+// helper functions for displaying toast notifications with consistent styling
 export const toastSuccess = (title: string, description?: string) => 
     toast.success(title, { description });
 

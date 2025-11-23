@@ -73,8 +73,12 @@ export function LoginForm({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
+
+                    {/* login form */}
                     <form  onSubmit={handleSubmit} className="space-y-6">
                         <FieldGroup>
+
+                            {/* email field */}
                             <Field>
                                 <FieldLabel htmlFor="email" className="text-gray-300">Email</FieldLabel>
                                 <Input
@@ -88,7 +92,10 @@ export function LoginForm({
                                 />
                             </Field>
 
+                            {/* password field */}
                             <Field>
+
+                                {/* forgot password link */}
                                 <div className="flex items-center justify-between mb-2">
                                     <FieldLabel htmlFor="password" className="text-gray-300">Password</FieldLabel>
                                     <a
@@ -109,6 +116,7 @@ export function LoginForm({
                                 />
                             </Field>
 
+                            {/* submit button field */}
                             <Field className="pt-2">
                                 <Button
                                     type="submit"
@@ -119,6 +127,7 @@ export function LoginForm({
                                 </Button>
                             </Field>
 
+                            {/* signup link field */}
                             <FieldDescription className="text-center text-xs text-gray-500">
                                 Don&apos;t have an account?{" "}
                                 <Link 

@@ -110,14 +110,12 @@ export function SignUpForm({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
+                    
+                    {/* sign up form */}
                     <form  onSubmit={handleSubmit} className="space-y-6">
-                        {/* {error && (
-                            // give the error a border of text-red-500 and make it thick
-                            <div className="text-red-500 text-sm mb-4 border-red-500 border p-2 rounded">
-                                {error}
-                            </div>
-                        )} */}
                         <FieldGroup>
+
+                            {/* username field */}
                             <Field>
                                 <FieldLabel htmlFor="username" className="text-gray-300">Username</FieldLabel>
                                 <Input
@@ -131,6 +129,7 @@ export function SignUpForm({
                                 />
                             </Field>
 
+                            {/* email field */}
                             <Field>
                                 <FieldLabel htmlFor="email" className="text-gray-300">Email</FieldLabel>
                                 <Input
@@ -144,6 +143,7 @@ export function SignUpForm({
                                 />
                             </Field>
 
+                            {/* password field */}
                             <Field>
                                 <div className="flex items-center justify-between mb-2">
                                     <FieldLabel htmlFor="password" className="text-gray-300">Password</FieldLabel>
@@ -159,6 +159,7 @@ export function SignUpForm({
                                 />
                             </Field>
 
+                            {/* confirm password field */}
                             <Field>
                                 <div className="flex items-center justify-between mb-2">
                                     <FieldLabel htmlFor="password" className="text-gray-300">Confirm Password</FieldLabel>
@@ -174,6 +175,7 @@ export function SignUpForm({
                                 />
                             </Field>
 
+                            {/* submit button field */}
                             <Field className="pt-2">
                                 <Button
                                     type="submit"
@@ -183,7 +185,8 @@ export function SignUpForm({
                                     { isLoading ? "Creating account..." : "Sign Up" }
                                 </Button>
                             </Field>
-
+                            
+                            {/* login link field */}
                             <FieldDescription className="text-center text-xs text-gray-500">
                                 Already have an account?{" "}
                                 <Link 
