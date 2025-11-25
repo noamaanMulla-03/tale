@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { Resend } from "resend";
+import generateOTPEmailTemplate from "./OTPTemplate.js";
 import "dotenv/config";
 
 // generate token function
@@ -96,20 +97,14 @@ const userController = {
         }
 
         try {
+            const emailTemplate = generateOTPEmailTemplate(OTP);
+            
             await resend.emails.send({
                 from: 'Tale <onboarding@resend.dev>',
                 to: email,
                 subject: 'Verify your email - Tale',
-                html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #333;">Email Verification</h2>
-                        <p style="color: #666;">Your verification code is:</p>
-                        <h1 style="font-size: 32px; letter-spacing: 8px; color: #f97316; margin: 20px 0;">${OTP}</h1>
-                        <p style="color: #666;">This code will expire in <strong>5 minutes</strong>.</p>
-                        <p style="color: #999; font-size: 12px; margin-top: 30px;">If you didn't request this code, please ignore this email.</p>
-                    </div>
-                `,
-                text: `Your verification code is ${OTP}. It will expire in 5 minutes.`
+                html: emailTemplate.html,
+                text: emailTemplate.text
             });
 
             res.status(200).json({ message: "OTP sent successfully!" });
