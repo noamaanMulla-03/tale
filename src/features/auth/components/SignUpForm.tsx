@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { registerUser } from "../services/auth"
+import { sendEmailOTP } from "../services/emailVerification"
 import useAuthStore from "@/store/useAuthStore"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -27,11 +28,11 @@ export function SignUpForm({
     // destructure login from auth store
     const { login } = useAuthStore();
     // component state for form fields
-    const [ username, setUsername ] = useState("");
-    const [ email, setEmail ] = useState("");
-    const [ password, setPassword ] = useState("");
-    const [ confirmPassword, setConfirmPassword ] = useState("");
-    const [ isLoading, setIsLoading ] = useState<boolean>(false);
+    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
     // navigate hook
     const navigate = useNavigate();
@@ -44,16 +45,16 @@ export function SignUpForm({
         // set loading state
         setIsLoading(true);
         // set error state
-            // setError(null);
+        // setError(null);
 
         try {
             // store password validation error status
             const passwordValidationError = validatePasswords(password, confirmPassword);
 
             // if password has discrepencies
-            if(passwordValidationError) {
+            if (passwordValidationError) {
                 // set error state to password error
-                    // setError(passwordValidationError);
+                // setError(passwordValidationError);
                 toastError(passwordValidationError)
                 // set loading state to false
                 setIsLoading(false);
@@ -70,12 +71,15 @@ export function SignUpForm({
             // success toast
             toastSuccess(`Welcome aboard, ${user.username}!`)
 
+            // send OTP email for verification
+            await sendEmailOTP();
+
             // navigate to email verification page
             navigate('/verify-email');
 
-        } catch(error) {
+        } catch (error) {
             // set error message on failure
-                // setError("Registration failed! Please try again.");
+            // setError("Registration failed! Please try again.");
             toastError("Registration failed! Please try again.");
 
         } finally {
@@ -88,11 +92,11 @@ export function SignUpForm({
     const validatePasswords = (password: string, confirmPassword: string) => {
 
         // password should be of atleast 8 characters
-        if(password.length < 8)
+        if (password.length < 8)
             return "Password should be of atleast 8 characters."
         // password does not match confirm password
 
-        if(password !== confirmPassword)
+        if (password !== confirmPassword)
             return "Passwords does not match."
 
         // password has no discrepency, return no error
@@ -114,9 +118,9 @@ export function SignUpForm({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    
+
                     {/* sign up form */}
-                    <form  onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
                         <FieldGroup>
 
                             {/* username field */}
@@ -186,15 +190,15 @@ export function SignUpForm({
                                     disabled={isLoading}
                                     className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    { isLoading ? "Creating account..." : "Sign Up" }
+                                    {isLoading ? "Creating account..." : "Sign Up"}
                                 </Button>
                             </Field>
-                            
+
                             {/* login link field */}
                             <FieldDescription className="text-center text-xs text-gray-500">
                                 Already have an account?{" "}
-                                <Link 
-                                    className="text-orange-500 underline-offset-4 hover:underline font-medium" 
+                                <Link
+                                    className="text-orange-500 underline-offset-4 hover:underline font-medium"
                                     to="/login"
                                 >
                                     Log in

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '@/store/useAuthStore';
-import { onVerify, onResend } from '../services/emailVerification';
+import { verifyEmailOTP, sendEmailOTP } from '../services/emailVerification';
 
 // EmailVerification component
 export function EmailVerification() {
@@ -19,7 +19,7 @@ export function EmailVerification() {
         if (value.length === 6) {
             setIsVerifying(true);
             try {
-                await onVerify(value);
+                await verifyEmailOTP(value);
                 toast.success('Email verified successfully!');
             } catch (error) {
                 toast.error('Invalid verification code');
@@ -33,7 +33,7 @@ export function EmailVerification() {
     const handleResend = async () => {
         setIsResending(true);
         try {
-            await onResend();
+            await sendEmailOTP();
             toast.success('Verification code resent!');
             setCode('');
         } catch (error) {

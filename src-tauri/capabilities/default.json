@@ -6,6 +6,12 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "notification:default"
+    "notification:default",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-load",
+    "store:allow-save",
+    "store:allow-delete",
+    "store:default"
   ]
 }
