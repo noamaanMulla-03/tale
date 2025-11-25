@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,6 +14,30 @@ export function EmailVerification() {
     const [code, setCode] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
     const [isResending, setIsResending] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
+    const [progress, setProgress] = useState(100); // percentage
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 0) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                const newTime = prev - 1;
+                setProgress((newTime / 300) * 100);
+                return newTime;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isResending]); // Reset timer when resending
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const handleComplete = async (value: string) => {
         setCode(value);
@@ -36,6 +61,8 @@ export function EmailVerification() {
             await sendEmailOTP();
             toast.success('Verification code resent!');
             setCode('');
+            setTimeLeft(300); // Reset timer
+            setProgress(100);
         } catch (error) {
             toast.error('Failed to resend code');
         } finally {
@@ -101,6 +128,20 @@ export function EmailVerification() {
                             <span>Verifying your code...</span>
                         </div>
                     )}
+
+                    {/* Timer and Progress Bar */}
+                    <div className="w-full space-y-2 px-6 pt-2">
+                        <div className="flex justify-between items-center text-xs text-gray-400">
+                            <span>Code expires in:</span>
+                            <span className={`font-mono font-medium ${timeLeft < 60 ? 'text-orange-500' : 'text-white'}`}>
+                                {formatTime(timeLeft)}
+                            </span>
+                        </div>
+                        <Progress 
+                            value={progress} 
+                            className="h-1.5 bg-[#3a3a3a] [&>div]:bg-linear-to-r [&>div]:from-orange-500 [&>div]:to-orange-600"
+                        />
+                    </div>
                 </div>
 
                 <div className="text-center pt-4 relative z-10">
