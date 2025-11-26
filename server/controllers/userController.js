@@ -83,8 +83,31 @@ const userController = {
         const { email } = req.body;
 
         if(!email) return res.status(400).json({error: "Email is required!"});
+        
+        // max 3 requests
+        const RATE_LIMIT = 3; 
+        // per 15 minutes in seconds
+        const RATE_LIMIT_WINDOW = 15 * 60; 
+        // initialize rate limit key with email
+        const rateLimitKey = `otp_rate_limit:${email}`;
 
-        // TODO: Add rate limiting here (max 3 requests per 15 minutes)
+        // increment request count
+        const currentRequests = await redis.incr(rateLimitKey);
+
+        // if current requests === 1, set expiration
+        if (currentRequests === 1) await redis.expire(rateLimitKey, RATE_LIMIT_WINDOW);
+
+        // check if rate limit exceeded
+        if (currentRequests > RATE_LIMIT) {
+            // get time to live for the key
+            const ttl = await redis.ttl(rateLimitKey);
+            // convert ttl to minutes and seconds
+            const minutes = Math.floor(ttl / 60);
+            const seconds = ttl % 60;
+
+            // return rate limit error with time to wait
+            return res.status(429).json({ error: `Too many OTP requests. Please try again in ${minutes} minutes and ${seconds} seconds.` });
+        }
 
         const OTP = generateEmailOTP();
 
