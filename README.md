@@ -5,7 +5,8 @@ A modern desktop chat application built with Tauri, React, TypeScript, and Postg
 ## Features
 
 - **Desktop Application** - Cross-platform desktop app powered by Tauri
-- **Authentication System** - Secure user registration and login with JWT tokens
+- **Secure Authentication** - User registration, Login, and Email Verification via OTP
+- **Rate Limiting** - Redis-backed protection against spam and abuse
 - **State Management** - Zustand for global state with localStorage persistence
 - **Modern UI** - Dark theme with shadcn/ui components and Tailwind CSS v4
 - **Protected Routes** - Client-side route guards for authenticated pages
@@ -27,8 +28,9 @@ A modern desktop chat application built with Tauri, React, TypeScript, and Postg
 - **Runtime**: Node.js with ES Modules
 - **Framework**: Express.js v5
 - **Database**: PostgreSQL
-- **Authentication**: bcryptjs for password hashing
-- **Session Management**: express-session with connect-pg-simple
+- **Cache & Rate Limiting**: Redis (ioredis)
+- **Email Service**: Resend
+- **Authentication**: bcryptjs, JWT (JSON Web Tokens)
 - **Real-time**: Socket.io (ready for implementation)
 
 ## Prerequisites
@@ -36,6 +38,7 @@ A modern desktop chat application built with Tauri, React, TypeScript, and Postg
 - **Node.js** (v18 or higher)
 - **Rust** (latest stable)
 - **PostgreSQL** (v14 or higher)
+- **Redis** (local instance or cloud url)
 - **npm** or **yarn**
 
 ## Installation
@@ -43,7 +46,7 @@ A modern desktop chat application built with Tauri, React, TypeScript, and Postg
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/noamaanMulla-03/tale.git
+git clone [https://github.com/noamaanMulla-03/tale.git](https://github.com/noamaanMulla-03/tale.git)
 cd tale
 ```
 
@@ -71,7 +74,21 @@ createdb tale
 psql -d tale -f server/migrations/create_users_table.sql
 ```
 
-### 5. Configure environment variables
+### 5. Set up Redis database
+
+Ensure you have Redis running locally on port 6379
+
+```
+redis-server
+```
+
+Or obtain a connection string from a cloud provider (e.g., Upstash, Railway).
+
+### 6. Get Resend API key
+
+Sign up at [Resend](https://resend.com) and generate an API Key for sending emails.
+
+### 7. Configure environment variables
 
 Create a `.env` file in the `server` directory:
 
@@ -95,6 +112,12 @@ POSTGRES_PORT=5432
 
 # JWT secret key for authentication
 JWT_SECRET=your_jwt_secret_key
+
+# (Get your Resend API key from https://resend.com)
+RESEND_URL=
+
+# Redis connection URL
+REDIS_URL=redis://localhost:6379
 ```
 
 ## Running the Application
@@ -113,6 +136,11 @@ npm run tauri dev
 ```
 
 The backend API will run on `http://localhost:3000` and the Tauri app will launch automatically.
+
+**Terminal 3 - Redis Database (If running locally):**
+```bash
+redis-server
+```
 
 ### Production Build
 
@@ -195,6 +223,27 @@ Content-Type: application/json
 }
 ```
 
+### Verification (OTP)
+
+**Send OTP**
+```http
+POST /auth/send-otp
+Content-Type: application/json
+{ 
+  "email": "john@example.com"
+}
+```
+
+**Verify OTP**
+```http
+POST /auth/verify-otp
+Content-Type: application/json
+{
+  "email": "john@example.com", 
+  "otp": "123456"
+}
+```
+
 ## UI Components
 
 The project uses [shadcn/ui](https://ui.shadcn.com/) components with custom dark theme:
@@ -202,9 +251,12 @@ The project uses [shadcn/ui](https://ui.shadcn.com/) components with custom dark
 - `Button` - Interactive buttons with variants
 - `Card` - Container for content
 - `Input` - Form input fields
+- `InputOTP` - 6-digit verification code input
 - `Label` - Form labels
 - `Field` - Form field wrapper with validation
 - `Separator` - Visual dividers
+- `Progress` - Visual timer for OTP expiration
+- `Toast (Sonner)` - Notification system
 
 Add more components:
 ```bash
@@ -241,6 +293,8 @@ CREATE TABLE users (
 - Password hashing with bcrypt (10 rounds)
 - Protected routes with authentication guards
 - CORS configuration for frontend-backend communication
+- Rate Limiting: Redis counters prevent OTP spam (Max 3 attempts per 15 mins)
+- TTL Expiry: OTPs automatically expire from Redis after 5 minutes
 - Environment variable management with dotenv
 - Type-safe API calls with TypeScript
 - SQL injection prevention with parameterized queries
