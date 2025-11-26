@@ -44,8 +44,6 @@ export function SignUpForm({
         e.preventDefault();
         // set loading state
         setIsLoading(true);
-        // set error state
-        // setError(null);
 
         try {
             // store password validation error status
@@ -77,10 +75,10 @@ export function SignUpForm({
             // navigate to email verification page
             navigate('/verify-email');
 
-        } catch (error) {
+        } catch (error: any) {
             // set error message on failure
-            // setError("Registration failed! Please try again.");
-            toastError("Registration failed! Please try again.");
+            const errorMessage = error.response?.data?.error || "Registration failed! Please try again.";
+            toastError(errorMessage);
 
         } finally {
             // set loading state to false after attempt

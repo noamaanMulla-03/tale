@@ -2,8 +2,13 @@
 import api from '@/lib/api';
 import useAuthStore from '@/store/useAuthStore';
 
+// Message response interface
+interface MessageResponse {
+    message: string;
+}
+
 // Verify email OTP
-const verifyEmailOTP = async (otp: string): Promise<void> => {
+const verifyEmailOTP = async (otp: string): Promise<MessageResponse> => {
     // get user email from auth store
     const email = useAuthStore.getState().user?.email;
     // throw error if email not found
@@ -15,7 +20,7 @@ const verifyEmailOTP = async (otp: string): Promise<void> => {
 }
 
 // Send/Resend email OTP
-const sendEmailOTP = async (): Promise<void> => {
+const sendEmailOTP = async (): Promise<MessageResponse> => {
     // get user email from auth store
     const email = useAuthStore.getState().user?.email;
     // throw error if email not found
