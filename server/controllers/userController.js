@@ -6,6 +6,16 @@ import crypto from "crypto";
 import { Resend } from "resend";
 import generateOTPEmailTemplate from "./OTPTemplate.js";
 import "dotenv/config";
+import Redis from "ioredis";
+
+// new resend instance
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+// temporary map for otp (USE REDIS IN PROD)
+const redis = new Redis(process.env.REDIS_URL);
+
+// generate random 6-digit OTP for email verification
+const generateEmailOTP = () => crypto.randomInt(100000, 999999).toString();
 
 // generate token function
 const generateToken = (user) => {
@@ -15,15 +25,6 @@ const generateToken = (user) => {
         { expiresIn: '1h' }
     );
 }
-
-// new resend instance
-const resend = new Resend(process.env.RESEND_API_KEY)
-
-// generate random 6-digit OTP for email verification
-const generateEmailOTP = () => crypto.randomInt(100000, 999999).toString();
-
-// temporary map for otp (USE REDIS IN PROD)
-const OTPStore = new Map();
 
 // user controller object
 const userController = {
@@ -86,18 +87,15 @@ const userController = {
         // TODO: Add rate limiting here (max 3 requests per 15 minutes)
 
         const OTP = generateEmailOTP();
-        const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
-
-        // Store OTP with expiration
-        OTPStore.set(email, { OTP, expiresAt });
-
-        // Log OTP in development for testing
-        if (process.env.NODE_ENV === 'development') {
-            console.log(`📧 OTP for ${email}: ${OTP}`);
-        }
 
         try {
             const emailTemplate = generateOTPEmailTemplate(OTP);
+
+            // REDIS CHANGE: Set key with Expiration (EX) in seconds
+            // key: "otp:user@email.com"
+            // value: "123456"
+            // options: EX 300 (5 minutes)
+            await redis.set(`otp:${email}`, OTP, 'EX', 300);
             
             await resend.emails.send({
                 from: 'Tale <onboarding@resend.dev>',
@@ -118,31 +116,22 @@ const userController = {
     verifyOTP: async (req, res, next) => {
         const { email, otp } = req.body;
 
-        if(!email || !otp) {
-            return res.status(400).json({error: "Email and OTP are required!"});
-        }
-
-        const storedData = OTPStore.get(email);
-
-        if (!storedData) {
-            return res.status(400).json({error: "No OTP found. Please request a new one."});
-        }
-
-        // Check if OTP has expired
-        if (Date.now() > storedData.expiresAt) {
-            OTPStore.delete(email);
-            return res.status(400).json({error: "OTP has expired. Please request a new one."});
-        }
-
-        // Check if OTP matches
-        if (storedData.OTP !== otp) {
-            return res.status(400).json({error: "Invalid OTP."});
-        }
-
-        // OTP is valid - clear it and update user
-        OTPStore.delete(email);
+        // basic validation
+        if(!email || !otp) return res.status(400).json({error: "Email and OTP are required!"});
 
         try {
+            // REDIS CHANGE: Retrieve the OTP
+            const storedOTP = await redis.get(`otp:${email}`);
+
+            // check if OTP exists
+            if (!storedOTP) return res.status(400).json({error: "OTP invalid or expired. Please request a new one."});
+
+            // Check if OTP matches
+            if (storedOTP !== otp) return res.status(400).json({error: "Invalid OTP."});
+
+            // OTP is valid - clear it and update user
+            await redis.del(`otp:${email}`);
+
             // TODO: Update user's email_verified status in database
             // await userModel.updateEmailVerified(email, true);
 
