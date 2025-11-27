@@ -1,6 +1,7 @@
 // interface for the user object
 interface User {
     id: string,
+    avatarUrl?: string,
     username: string,
     email: string,
 };

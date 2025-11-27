@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -19,6 +20,8 @@ export function EmailVerification() {
     // verification and resending states
     const [isVerifying, setIsVerifying] = useState(false);
     const [isResending, setIsResending] = useState(false);
+    // navigate hook
+    const navigate = useNavigate();
     // 5 minutes in seconds
     const [timeLeft, setTimeLeft] = useState(300); 
     // percentage
@@ -69,6 +72,8 @@ export function EmailVerification() {
                 const response = await verifyEmailOTP(value);
                 // show success toast
                 toast.success(response.message);
+                // navigate to profile setup
+                navigate('/profile');
             } catch (error: any) {
                 // show error toast
                 const errorMessage = error.response?.data?.error || 'Invalid verification code';

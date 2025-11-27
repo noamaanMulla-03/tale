@@ -7,6 +7,16 @@ import { Toaster } from "sonner";
 import { toastConfig } from "./lib/utils";
 import { EmailVerification } from "./features/auth/components/EmailVerification";
 import EmailVerificationPageWrapper from "./pages/onBoarding/EmailVerificationPageWrapper";
+import ProfilePageWrapper from "./pages/onBoarding/ProfilePageWrapper";
+import { ProfilePage } from "./features/profile";
+// Base weight (400)
+import "@fontsource/nunito"; 
+// Italics (for emphasized messages)
+import "@fontsource/nunito/400-italic.css";
+// Semi-bold (Great for usernames in chat)
+import "@fontsource/nunito/600.css";
+// Bold (For headings)
+import "@fontsource/nunito/700.css";
 
 function App() {
 
@@ -44,6 +54,13 @@ function App() {
                         <EmailVerificationPageWrapper>
                             <EmailVerification />
                         </EmailVerificationPageWrapper>
+                    } />
+
+                    {/* route for profile page */}
+                    <Route path="/profile" element={
+                        <ProfilePageWrapper>
+                            <ProfilePage />
+                        </ProfilePageWrapper>
                     } />
                 </Routes>
             </Router>
