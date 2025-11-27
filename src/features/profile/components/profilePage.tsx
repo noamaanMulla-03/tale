@@ -144,6 +144,8 @@ export function ProfilePage() {
                                             selected={dob}
                                             onSelect={setDob}
                                             className="text-white"
+                                            captionLayout="dropdown"
+                                            fromYear={1940}
                                         />
                                     </PopoverContent>
                                 </Popover>
@@ -166,7 +168,7 @@ export function ProfilePage() {
                                 <Textarea
                                     value={bio}
                                     onChange={(e) => setBio(e.target.value)}
-                                    className="min-h-[100px] bg-transparent border-none text-white font-medium p-0 focus-visible:ring-0 resize-none"
+                                    className="min-h-[250px] bg-[#1a1a1a] border border-white/10 text-white font-medium p-3 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none rounded-md"
                                     placeholder="Tell us about yourself..."
                                 />
                             </Field>
