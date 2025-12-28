@@ -25,6 +25,7 @@ interface RegistrationData extends Omit<User, 'id'> {
 interface AuthResponse {
     user: User,
     token: string,
+    email_verified: boolean,
 };
 
 // interface for the session state in zustand store

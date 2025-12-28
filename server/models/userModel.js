@@ -36,6 +36,22 @@ const userModel = {
             throw err;
         }
     },
+
+    // verify user email
+    verifyUserEmail: async (email) => {
+        // create query text and parameters
+        const queryText = "UPDATE users SET email_verified = $1 WHERE email = $2";
+        const queryParams = [true, email];
+
+        try {
+            // execute the query
+            await query(queryText, queryParams);
+        } catch (err) {
+            // handle errors
+            console.error(`[-] Error updating email verified status: ${err.message}`);
+            throw err;
+        }
+    },
 };
 
 // export the user model

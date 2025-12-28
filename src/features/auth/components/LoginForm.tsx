@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { loginUser } from "../services/auth"
 import useAuthStore from "@/store/useAuthStore"
+import { useNavigate } from "react-router-dom"
+import { sendEmailOTP } from "../services/emailVerification"
 import { Link } from "react-router-dom"
 
 export function LoginForm({
@@ -31,6 +33,8 @@ export function LoginForm({
     const [password, setPassword] = useState("");
     // error and loading states
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    // navigate hook
+    const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
@@ -42,7 +46,19 @@ export function LoginForm({
             // call login API
             const response = await loginUser({ email, password });
             // destructure user and token from response
-            const { user, token } = response;
+            const { user, token, email_verified } = response;
+
+            // check if email is verified
+            if (!email_verified) {
+                toastError("Please verify your email before logging in.");
+                setIsLoading(false);
+                // navigate to email verification page
+                navigate('/verify-email');
+                // send email OTP
+                await sendEmailOTP();
+                return;
+            }
+
             // update auth store on successful login
             login(user, token);
 

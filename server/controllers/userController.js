@@ -155,8 +155,8 @@ const userController = {
             // OTP is valid - clear it and update user
             await redis.del(`otp:${email}`);
 
-            // TODO: Update user's email_verified status in database
-            // await userModel.updateEmailVerified(email, true);
+            // Update user's email_verified status in database
+            await userModel.verifyUserEmail(email);
 
             res.status(200).json({ message: "Email verified successfully!" });
         } catch (error) {
