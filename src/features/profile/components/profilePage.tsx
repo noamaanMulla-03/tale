@@ -12,17 +12,55 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { format } from 'date-fns/format';
 import { Textarea } from '@/components/ui/textarea';
+import { z } from 'zod';
+
+// Zod schema for profile validation
+const profileSchema = z.object({
+    // Display Name must be at least 2 characters
+    displayName: z.string().min(1, 'Display name is required').min(2, 'Display name must be at least 2 characters'),
+    // Gender is optional
+    gender: z.string().optional(),
+    // Date of Birth must be a valid date
+    dob: z.date({
+        message: "Date of birth is required"
+    }),
+    // Phone number must match a basic phone number pattern
+    phoneNumber: z.string().min(1, 'Phone number is required').regex(/^[0-9+\-\s()]+$/, 'Please enter a valid phone number'),
+    // Bio is optional
+    bio: z.string().optional(),
+});
 
 export function ProfilePage() {
     const { user } = useAuthStore();
     const [isSaving, setIsSaving] = useState(false);
+    // Display Name state initialized as empty string
     const [displayName, setDisplayName] = useState('');
+    // Gender state initialized as empty string
     const [gender, setGender] = useState('');
+    // Date of Birth state initialized as undefined
     const [dob, setDob] = useState<Date | undefined>(undefined);
+    // Phone number state initialized as empty string
     const [phoneNumber, setPhoneNumber] = useState('');
+    // Bio state initialized as empty string
     const [bio, setBio] = useState('');
 
     const handleSave = async () => {
+        // Validate form data
+        const validation = profileSchema.safeParse({
+            displayName,
+            gender: gender || undefined,
+            dob,
+            phoneNumber,
+            bio: bio || undefined,
+        });
+
+        if (!validation.success) {
+            // Show first validation error
+            const firstError = validation.error.issues[0];
+            toast.error(firstError.message);
+            return;
+        }
+
         setIsSaving(true);
         try {
             // TODO: Add API call to update profile
@@ -100,6 +138,7 @@ export function ProfilePage() {
                                     onChange={(e) => setDisplayName(e.target.value)}
                                     className="h-10 bg-transparent border-none text-white font-medium p-0 focus-visible:ring-0 disabled:opacity-100"
                                     placeholder="Enter your display name"
+                                    required
                                 />
                             </Field>
 
@@ -159,6 +198,7 @@ export function ProfilePage() {
                                     onChange={(e) => setPhoneNumber(e.target.value)}
                                     className="h-10 bg-transparent border-none text-white font-medium p-0 focus-visible:ring-0 disabled:opacity-100"
                                     placeholder="Enter your phone number"
+                                    required
                                 />
                             </Field>
 
