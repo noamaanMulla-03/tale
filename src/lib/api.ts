@@ -12,5 +12,12 @@ const api = axios.create({
     }
 });
 
+// create an axios instance for file uploads
+const fileUploadApi = axios.create({
+    baseURL: API_URL,
+    // Don't set Content-Type - let axios handle it automatically with proper boundary
+});
+
 // export the axios instance
 export default api;
+export { fileUploadApi };

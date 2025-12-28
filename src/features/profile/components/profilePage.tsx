@@ -2,17 +2,19 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Field, FieldLabel } from '@/components/ui/field';
-import { Camera, CalendarIcon } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import { toast } from 'sonner';
+import { toastError } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from "@/components/ui/calendar"
 import { format } from 'date-fns/format';
 import { Textarea } from '@/components/ui/textarea';
 import { z } from 'zod';
+import { FileUpload } from '@/components/ui/file-upload';
+import { uploadProfileSetup } from '../services/profileSetup';
 
 // Zod schema for profile validation
 const profileSchema = z.object({
@@ -43,6 +45,9 @@ export function ProfilePage() {
     const [phoneNumber, setPhoneNumber] = useState('');
     // Bio state initialized as empty string
     const [bio, setBio] = useState('');
+    // Avatar file and preview state
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [avatarPreview, setAvatarPreview] = useState<string>('');
 
     const handleSave = async () => {
         // Validate form data
@@ -62,14 +67,56 @@ export function ProfilePage() {
         }
 
         setIsSaving(true);
+
         try {
-            // TODO: Add API call to update profile
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            toast.success('Profile updated successfully!');
-        } catch (error) {
-            toast.error('Failed to update profile');
+            // FormData for multipart/form-data upload
+            const formData = new FormData();
+
+            // Only append avatar if file is selected
+            if (avatarFile) {
+                formData.append('avatar', avatarFile);
+            }
+
+            // Required fields
+            formData.append('displayName', displayName);
+            formData.append('dob', dob?.toISOString() || '');
+            formData.append('phoneNumber', phoneNumber);
+
+            // Optional fields - only append if they have values
+            if (gender) {
+                formData.append('gender', gender);
+            }
+            if (bio) {
+                formData.append('bio', bio);
+            }
+
+            const response = await uploadProfileSetup(formData);
+            toast.success('Profile saved successfully!');
+
+            // TODO: Navigate to chat page or dashboard after successful profile setup
+            // navigate('/chat');
+        } catch (error: any) {
+            // set error message on failure
+            const errorMessage = error.response?.data?.error || "Cannot reach the server at the moment!";
+            toastError(errorMessage);
         } finally {
+            // set loading state to false after attempt
             setIsSaving(false);
+        }
+    };
+
+    const handleAvatarChange = (file: File) => {
+        setAvatarFile(file);
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(file);
+        setAvatarPreview(previewUrl);
+    };
+
+    const handleAvatarRemove = () => {
+        setAvatarFile(null);
+        if (avatarPreview) {
+            URL.revokeObjectURL(avatarPreview);
+            setAvatarPreview('');
         }
     };
 
@@ -80,7 +127,7 @@ export function ProfilePage() {
                 <h1 className="text-4xl pb-2 font-bold text-white bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
                     Set up your Profile
                 </h1>
-                <p className="text-gray-400 text-sm pb-6">Let others know more about you</p>
+                <p className="text-gray-400 text-sm text-center pb-6">Let others know more about you</p>
             </div>
 
             {/* Two Column Layout */}
@@ -95,16 +142,24 @@ export function ProfilePage() {
                             <p className="text-sm text-gray-400">Set up your profile picture</p>
                         </div>
                         <div className="flex-1 flex items-center justify-center px-8">
-                            <div className="relative w-full aspect-square max-w-md group">
-                                <Avatar className="w-full h-full border-8 border-[#3a3a3a] transition-all duration-300 group-hover:border-orange-500/30">
-                                    <AvatarImage src={user?.avatarUrl} alt={user?.username} />
-                                    <AvatarFallback className="bg-gradient-to-br from-orange-500 to-orange-600 text-white text-9xl font-bold">
-                                        {user?.username?.charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <button className="absolute bottom-4 right-4 p-4 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-full border-4 border-[#2a2a2a] transition-all duration-200 shadow-xl hover:scale-110 hover:shadow-orange-500/50 group">
-                                    <Camera className="h-6 w-6 text-white" />
-                                </button>
+                            <div className="w-full max-w-md space-y-4">
+                                <FileUpload
+                                    onFileSelect={handleAvatarChange}
+                                    maxSize={5 * 1024 * 1024} // 5MB
+                                    accept={{ 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }}
+                                    preview={avatarPreview || null}
+                                    className="rounded-full aspect-square"
+                                />
+                                {avatarPreview && (
+                                    <Button
+                                        onClick={handleAvatarRemove}
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full bg-red-500/10 border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 text-red-500 transition-all duration-200"
+                                    >
+                                        Remove Avatar
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </CardContent>
