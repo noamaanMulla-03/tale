@@ -37,11 +37,13 @@ export function LoginForm({
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-
         // prevent default form submission
         e.preventDefault();
+        e.stopPropagation();
+
         // set loading state
         setIsLoading(true);
+
         try {
             // call login API
             const response = await loginUser({ email, password });
@@ -51,7 +53,6 @@ export function LoginForm({
             // check if email is verified
             if (!email_verified) {
                 toastError("Please verify your email before logging in.");
-                setIsLoading(false);
                 // navigate to email verification page
                 navigate('/verify-email');
                 // send email OTP
@@ -64,8 +65,16 @@ export function LoginForm({
 
             // success toast
             toastSuccess(`Welcome back, ${user.username}!`)
+
+            // Navigate based on profile completion status
+            if (user.profileCompleted) {
+                navigate('/chat');
+            } else {
+                navigate('/profile-setup');
+            }
         } catch (error: any) {
             // set error message on failure
+            console.error('[Login Error]', error);
             const errorMessage = error.response?.data?.error || "Cannot reach the server at the moment!";
             toastError(errorMessage);
         } finally {

@@ -48,6 +48,14 @@ const useAuthStore = create<SessionState>()(
             // helper fx to get the current auth token
             getToken: () => get().token,
 
+            // update user data
+            updateUser: (userData) => {
+                const currentUser = get().user;
+                if (currentUser) {
+                    set({ user: { ...currentUser, ...userData } });
+                }
+            },
+
             // check if user is authenticated
             checkAuth: async () => {
                 // get current state of auth
@@ -70,7 +78,7 @@ const useAuthStore = create<SessionState>()(
                     const value = await secureStorage.getItem(name);
                     return value;
                 },
-                
+
                 // set item in secure storage
                 setItem: async (name, value) => {
                     await secureStorage.setItem(name, value);
@@ -81,7 +89,7 @@ const useAuthStore = create<SessionState>()(
                     await secureStorage.removeItem(name);
                 }
             })),
-            
+
             // only persist these fields
             partialize: (state) => ({
                 user: state.user,

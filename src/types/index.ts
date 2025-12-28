@@ -4,6 +4,7 @@ interface User {
     avatarUrl?: string,
     username: string,
     email: string,
+    profileCompleted?: boolean,
 };
 
 // interface for login credentials
@@ -36,6 +37,7 @@ interface SessionState {
     login: (user: User, token: string) => void;
     logout: () => void;
     checkAuth: () => Promise<boolean>;
+    updateUser: (user: Partial<User>) => void;
 };
 
 // export types

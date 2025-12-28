@@ -1,1 +1,4 @@
-export { default as ProfilePage } from './components/profilePage';
+// Re-export ProfilePage component
+import ProfilePage from './components/profilePage';
+export { ProfilePage };
+export default ProfilePage;

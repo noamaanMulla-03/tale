@@ -8,9 +8,12 @@ import { toastConfig } from "./lib/utils";
 import { EmailVerification } from "./features/auth/components/EmailVerification";
 import EmailVerificationPageWrapper from "./pages/onBoarding/EmailVerificationPageWrapper";
 import ProfilePageWrapper from "./pages/onBoarding/ProfilePageWrapper";
-import { ProfilePage } from "./features/profile";
+import ProfilePage from "./features/profile/components/profilePage";
+import ProtectedRoute from "./router/ProtectedRoute";
+import ProfileCompletionGuard from "./router/ProfileCompletionGuard";
+import ChatPage from "./pages/ChatPage";
 // Base weight (400)
-import "@fontsource/nunito"; 
+import "@fontsource/nunito";
 // Italics (for emphasized messages)
 import "@fontsource/nunito/400-italic.css";
 // Semi-bold (Great for usernames in chat)
@@ -56,12 +59,21 @@ function App() {
                         </EmailVerificationPageWrapper>
                     } />
 
-                    {/* route for profile page */}
-                    <Route path="/profile" element={
-                        <ProfilePageWrapper>
-                            <ProfilePage />
-                        </ProfilePageWrapper>
-                    } />
+                    {/* Protected Routes - require authentication */}
+                    <Route element={<ProtectedRoute />}>
+                        {/* Profile setup - accessible to authenticated users without profile completion */}
+                        <Route path="/profile-setup" element={
+                            <ProfilePageWrapper>
+                                <ProfilePage />
+                            </ProfilePageWrapper>
+                        } />
+
+                        {/* Routes that require profile completion */}
+                        <Route element={<ProfileCompletionGuard />}>
+                            <Route path="/chat" element={<ChatPage />} />
+                            {/* Add more protected routes here that require completed profile */}
+                        </Route>
+                    </Route>
                 </Routes>
             </Router>
         </div>

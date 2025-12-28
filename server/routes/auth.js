@@ -4,6 +4,10 @@ import express from 'express';
 // import user controller
 import userController from '../controllers/userController.js';
 
+// import middleware
+import { authenticateToken } from '../middleware/auth.js';
+import { upload } from '../middleware/upload.js';
+
 // initialize router
 const router = express.Router();
 
@@ -16,6 +20,9 @@ router.post('/register', userController.createUser);
 router.post('/send-otp', userController.sendOTP);
 // verify OTP
 router.post('/verify-otp', userController.verifyOTP);
+
+// profile setup route (protected, with file upload)
+router.post('/profile-setup', authenticateToken, upload.single('avatar'), userController.setupUserProfile);
 
 // export router
 export default router;

@@ -64,13 +64,26 @@ const userController = {
             if (!isPasswordValid)
                 return res.status(401).json({error: 'Invalid Email or Password!'});
 
+            // Get profile completion status
+            const profile = await userModel.getUserProfile(user.id);
+            const profileCompleted = !!profile?.profile_completed_at;
+
             // destructure user data to exclude password_hash
-            const userData = { id: user.id, username: user.username, email: user.email };
+            const userData = { 
+                id: user.id, 
+                username: user.username, 
+                email: user.email,
+                profileCompleted 
+            };
             // generate a jwt token
             const token = generateToken(userData);
 
-            // respond with user data
-            res.status(200).json({user: userData, token});
+            // respond with user data including email verification status
+            res.status(200).json({
+                user: userData, 
+                token,
+                email_verified: user.email_verified
+            });
 
         } catch (err) {
             // pass errors to error handling middleware
@@ -135,7 +148,7 @@ const userController = {
         }
     },
 
-    // Verify OTP (to be implemented)
+    // Verify OTP 
     verifyOTP: async (req, res, next) => {
         const { email, otp } = req.body;
 
@@ -162,6 +175,52 @@ const userController = {
         } catch (error) {
             console.error('Failed to verify email:', error);
             next(error);
+        }
+    },
+
+    // setup user profile
+    setupUserProfile: async (req, res, next) => {
+        const userId = req.user.id; // from auth middleware
+        const { displayName, gender, dob, phoneNumber, bio } = req.body;
+        const avatarFile = req.file; // from multer middleware
+
+        try {
+            // Validate required fields
+            if (!displayName || !dob || !phoneNumber) {
+                return res.status(400).json({ error: "Display name, date of birth, and phone number are required!" });
+            }
+
+            // Parse date to ensure it's valid
+            const parsedDob = new Date(dob);
+            if (isNaN(parsedDob.getTime())) {
+                return res.status(400).json({ error: "Invalid date of birth format!" });
+            }
+
+            // 1. Update display name in users table
+            await userModel.updateUserDisplayName(userId, displayName);
+
+            // 2. Handle avatar upload if file is provided
+            let avatarUrl = null;
+            if (avatarFile) {
+                // TODO: Upload to cloud storage (S3, Cloudinary, etc.)
+                // For now, save file path or use a placeholder
+                avatarUrl = `/uploads/avatars/${avatarFile.filename}`;
+                await userModel.updateUserAvatar(userId, avatarUrl);
+            }
+
+            // 3. Upsert profile data into profiles table (use parsed date)
+            const profileData = { gender, dob: parsedDob, phoneNumber, bio };
+            await userModel.upsertProfile(userId, profileData);
+
+            // 4. Get complete profile to return
+            const completeProfile = await userModel.getUserProfile(userId);
+
+            // respond with updated profile data
+            res.status(200).json({ profile: completeProfile });
+        } catch (err) {
+            // pass errors to error handling middleware
+            console.error('Profile setup error:', err);
+            next(err);
         }
     }
 };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { z } from 'zod';
 import { FileUpload } from '@/components/ui/file-upload';
 import { uploadProfileSetup } from '../services/profileSetup';
+import { useNavigate } from 'react-router-dom';
 
 // Zod schema for profile validation
 const profileSchema = z.object({
@@ -33,7 +34,8 @@ const profileSchema = z.object({
 });
 
 export function ProfilePage() {
-    const { user } = useAuthStore();
+    const { user, updateUser } = useAuthStore();
+    const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
     // Display Name state initialized as empty string
     const [displayName, setDisplayName] = useState('');
@@ -48,6 +50,15 @@ export function ProfilePage() {
     // Avatar file and preview state
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string>('');
+
+    // Cleanup preview URL on unmount
+    useEffect(() => {
+        return () => {
+            if (avatarPreview) {
+                URL.revokeObjectURL(avatarPreview);
+            }
+        };
+    }, [avatarPreview]);
 
     const handleSave = async () => {
         // Validate form data
@@ -93,8 +104,11 @@ export function ProfilePage() {
             const response = await uploadProfileSetup(formData);
             toast.success('Profile saved successfully!');
 
-            // TODO: Navigate to chat page or dashboard after successful profile setup
-            // navigate('/chat');
+            // Update user profile completion status
+            updateUser({ profileCompleted: true });
+
+            // Navigate to chat page after successful profile setup
+            navigate('/chat');
         } catch (error: any) {
             // set error message on failure
             const errorMessage = error.response?.data?.error || "Cannot reach the server at the moment!";
