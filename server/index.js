@@ -3,6 +3,8 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 // import dotenv to manage environment variables
 import dotenv from 'dotenv';
@@ -17,9 +19,24 @@ import { pool } from './db.js';
 
 // import auth routes
 import authRoutes from './routes/auth.js';
+// import chat routes
+import chatRoutes from './routes/chat.js';
 
 // initialize the server
 const app = express();
+// Create HTTP server (needed for Socket.IO)
+const httpServer = createServer(app);
+// Initialize Socket.IO with CORS configuration
+const io = new Server(httpServer, {
+    cors: {
+        origin: '*', // In production, specify your frontend URL
+        methods: ['GET', 'POST']
+    }
+});
+
+// Make io accessible in route controllers via req.app
+app.set('io', io);
+
 // server port from environment variables
 const PORT = process.env.PORT || 3000;
 
@@ -43,8 +60,10 @@ app.get('/', (_, res) => {
     res.send('<h1>Hello, Express.js Server!</h1>');
 });
 
-// login routes
+// auth routes
 app.use('/auth', authRoutes);
+// chat routes
+app.use('/api/chat', chatRoutes);
 
 // error handling middlewares
 app.use((err, req, res, next) => {
@@ -69,7 +88,163 @@ app.use((err, req, res, next) => {
 pool.query('SELECT NOW()')
     .catch(err => console.error(`[-] Database connection failed: ${err.message}`));
 
-// start the server
-app.listen(PORT, () => {
+// ============================================================================
+// SOCKET.IO WEBSOCKET SETUP
+// ============================================================================
+// Handle real-time events for chat functionality
+// Events: connection, disconnect, typing, stop_typing, join_conversation
+// ============================================================================
+
+// Store user socket connections for quick lookup
+// Format: { userId: socketId }
+const userSockets = new Map();
+
+// Socket.IO connection handler
+io.on('connection', (socket) => {
+    console.log(`[+] Socket connected: ${socket.id}`);
+
+    // ========================================================================
+    // USER AUTHENTICATION & ROOM JOINING
+    // ========================================================================
+    
+    /**
+     * Event: 'authenticate'
+     * Client sends userId to register their socket connection
+     * Join user-specific room for receiving targeted messages
+     */
+    socket.on('authenticate', (userId) => {
+        if (!userId) {
+            console.error('[-] Authentication failed: No userId provided');
+            return;
+        }
+
+        // Store user's socket ID for lookup
+        userSockets.set(userId, socket.id);
+        
+        // Join user-specific room (format: user_123)
+        // Used to send messages to specific users
+        socket.join(`user_${userId}`);
+        
+        // Store userId in socket data for later use
+        socket.userId = userId;
+        
+        console.log(`[+] User ${userId} authenticated and joined room: user_${userId}`);
+    });
+
+    /**
+     * Event: 'join_conversation'
+     * Client joins a conversation room to receive real-time updates
+     * Room format: conversation_123
+     */
+    socket.on('join_conversation', (conversationId) => {
+        if (!conversationId) {
+            console.error('[-] Join conversation failed: No conversationId provided');
+            return;
+        }
+
+        // Join conversation-specific room
+        socket.join(`conversation_${conversationId}`);
+        console.log(`[+] User ${socket.userId} joined conversation: ${conversationId}`);
+    });
+
+    /**
+     * Event: 'leave_conversation'
+     * Client leaves a conversation room when navigating away
+     */
+    socket.on('leave_conversation', (conversationId) => {
+        if (!conversationId) {
+            return;
+        }
+
+        socket.leave(`conversation_${conversationId}`);
+        console.log(`[+] User ${socket.userId} left conversation: ${conversationId}`);
+    });
+
+    // ========================================================================
+    // TYPING INDICATORS
+    // ========================================================================
+    
+    /**
+     * Event: 'typing'
+     * Client notifies others in conversation that user is typing
+     * Broadcast to all other users in the conversation
+     */
+    socket.on('typing', ({ conversationId, username }) => {
+        if (!conversationId) {
+            return;
+        }
+
+        // Broadcast to conversation room except sender
+        socket.to(`conversation_${conversationId}`).emit('user_typing', {
+            conversationId,
+            username,
+            userId: socket.userId
+        });
+    });
+
+    /**
+     * Event: 'stop_typing'
+     * Client notifies others that user stopped typing
+     */
+    socket.on('stop_typing', ({ conversationId }) => {
+        if (!conversationId) {
+            return;
+        }
+
+        // Broadcast to conversation room except sender
+        socket.to(`conversation_${conversationId}`).emit('user_stop_typing', {
+            conversationId,
+            userId: socket.userId
+        });
+    });
+
+    // ========================================================================
+    // ONLINE STATUS
+    // ========================================================================
+    
+    /**
+     * Event: 'online'
+     * Client announces they are online
+     * Broadcast to all connected clients (can be optimized to send only to contacts)
+     */
+    socket.on('online', () => {
+        if (!socket.userId) {
+            return;
+        }
+
+        // Broadcast online status to all clients
+        io.emit('user_online', {
+            userId: socket.userId
+        });
+    });
+
+    // ========================================================================
+    // DISCONNECTION
+    // ========================================================================
+    
+    /**
+     * Event: 'disconnect'
+     * Automatically fired when socket connection is lost
+     * Clean up user data and broadcast offline status
+     */
+    socket.on('disconnect', () => {
+        console.log(`[-] Socket disconnected: ${socket.id}`);
+
+        if (socket.userId) {
+            // Remove from user sockets map
+            userSockets.delete(socket.userId);
+
+            // Broadcast offline status to all clients
+            io.emit('user_offline', {
+                userId: socket.userId
+            });
+
+            console.log(`[-] User ${socket.userId} went offline`);
+        }
+    });
+});
+
+// start the server (use httpServer instead of app for Socket.IO)
+httpServer.listen(PORT, () => {
     console.log(`[+] Server running on Port: ${PORT}`)
 });
