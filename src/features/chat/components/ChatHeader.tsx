@@ -25,9 +25,11 @@ interface ChatHeaderProps {
     contact: Contact;
     // Optional: Callback to open group info panel
     onOpenGroupInfo?: () => void;
+    // Optional: Callback to start video call
+    onStartCall?: () => void;
 }
 
-export function ChatHeader({ contact, onOpenGroupInfo }: ChatHeaderProps) {
+export function ChatHeader({ contact, onOpenGroupInfo, onStartCall }: ChatHeaderProps) {
     // Get initials from contact/group name for avatar fallback
     const getInitials = (name: string) => {
         return name
@@ -150,6 +152,7 @@ export function ChatHeader({ contact, onOpenGroupInfo }: ChatHeaderProps) {
                     <Button
                         variant="ghost"
                         size="icon"
+                        onClick={onStartCall}
                         className="text-gray-400 hover:text-white hover:bg-white/10"
                         title="Video call"
                     >

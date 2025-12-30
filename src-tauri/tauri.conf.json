@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' ws://localhost:* wss://*; media-src 'self' blob: mediastream:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'"
     },
     "trayIcon": {
       "id": "main-tray",
@@ -41,6 +41,9 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "infoPlist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict><key>NSCameraUsageDescription</key><string>Tale needs access to your camera for video calls</string><key>NSMicrophoneUsageDescription</key><string>Tale needs access to your microphone for voice and video calls</string></dict></plist>"
+    }
   }
 }

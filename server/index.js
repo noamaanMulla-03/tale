@@ -225,6 +225,62 @@ io.on('connection', (socket) => {
     });
 
     // ========================================================================
+    // WEBRTC VIDEO CALLING
+    // ========================================================================
+    
+    /**
+     * Event: 'webrtc-signal'
+     * Relay WebRTC signaling messages (offer, answer, ICE candidates) between peers
+     * Signaling is required to establish peer-to-peer connection
+     * Message types:
+     *   - offer: Initial call offer with SDP (Session Description Protocol)
+     *   - answer: Response to offer with answerer's SDP
+     *   - ice-candidate: ICE (Interactive Connectivity Establishment) candidates for NAT traversal
+     */
+    socket.on('webrtc-signal', (message) => {
+        console.log(`[WebRTC] Relaying ${message.type} from user ${socket.userId} to user ${message.to}`);
+
+        // Add sender's userId to message
+        const signalMessage = {
+            ...message,
+            from: socket.userId
+        };
+
+        // Send signaling message to target user's room
+        // Target user will receive this via their socket listener
+        io.to(`user_${message.to}`).emit('webrtc-signal', signalMessage);
+    });
+
+    /**
+     * Event: 'webrtc-call-end'
+     * Notify remote peer that call has ended
+     * Triggered when either peer hangs up
+     */
+    socket.on('webrtc-call-end', (data) => {
+        console.log(`[WebRTC] Call ended by user ${socket.userId}`);
+
+        // Notify the other participant
+        io.to(`user_${data.to}`).emit('webrtc-call-end', {
+            from: socket.userId,
+            conversationId: data.conversationId
+        });
+    });
+
+    /**
+     * Event: 'webrtc-call-rejected'
+     * Notify caller that their call was rejected
+     */
+    socket.on('webrtc-call-rejected', (data) => {
+        console.log(`[WebRTC] Call rejected by user ${socket.userId}`);
+
+        // Notify the caller
+        io.to(`user_${data.to}`).emit('webrtc-call-rejected', {
+            from: socket.userId,
+            conversationId: data.conversationId
+        });
+    });
+
+    // ========================================================================
     // DISCONNECTION
     // ========================================================================
     

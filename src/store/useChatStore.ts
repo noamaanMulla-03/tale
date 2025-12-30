@@ -22,6 +22,9 @@ import {
 // Import types
 import { Contact, Message } from '@/types/chat';
 
+// Import WebRTC utilities
+import { CallInfo } from '@/lib/webrtc';
+
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
@@ -66,6 +69,19 @@ interface ChatState {
 
     // Total unread message count across all conversations
     totalUnreadCount: number;
+
+    // ========================================================================
+    // VIDEO CALL STATE
+    // ========================================================================
+
+    // Current active call information (null when no call)
+    currentCall: CallInfo | null;
+
+    // Set current call (when call starts)
+    setCurrentCall: (callInfo: CallInfo | null) => void;
+
+    // Get current call
+    getCurrentCall: () => CallInfo | null;
 
     // ========================================================================
     // CONVERSATION ACTIONS
@@ -231,6 +247,28 @@ const useChatStore = create<ChatState>((set, get) => ({
     typingUsers: [],
     onlineUsers: new Set(),
     totalUnreadCount: 0,
+    currentCall: null, // No active call initially
+
+    // ========================================================================
+    // VIDEO CALL ACTIONS
+    // ========================================================================
+
+    /**
+     * Set current active call
+     * @param callInfo - Call information or null to clear
+     */
+    setCurrentCall: (callInfo) => {
+        console.log('[ChatStore] Setting current call:', callInfo);
+        set({ currentCall: callInfo });
+    },
+
+    /**
+     * Get current active call
+     * @returns Current call info or null
+     */
+    getCurrentCall: () => {
+        return get().currentCall;
+    },
 
     // ========================================================================
     // CONVERSATION ACTIONS IMPLEMENTATION

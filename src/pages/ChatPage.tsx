@@ -10,10 +10,11 @@ import { MessageBubble } from '@/features/chat/components/MessageBubble';
 import { MessageInput } from '@/features/chat/components/MessageInput';
 import { CreateGroupDialog } from '@/features/chat/components/CreateGroupDialog';
 import { GroupInfoPanel } from '@/features/chat/components/GroupInfoPanel';
+import { VideoCallWindow } from '@/features/chat/components/VideoCallWindow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, LogOut, Settings, User, UserPlus, X, Users as UsersIcon, Plus, Edit3 } from 'lucide-react';
+import { Search, LogOut, Settings, User, UserPlus, X, Users as UsersIcon, Edit3 } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import useChatStore from '@/store/useChatStore';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +42,15 @@ import {
     emitTyping,
     emitStopTyping,
 } from '@/lib/socket';
+import {
+    initializeWebRTC,
+    startCall,
+    onIncomingCall,
+    onStateChange as onCallStateChange,
+    checkWebRTCSupport,
+    type CallInfo,
+} from '@/lib/webrtc';
+import { toast } from 'sonner';
 import { searchUsers, UserSearchResult } from '@/features/auth/services/user';
 import { createOrGetConversation } from '@/features/chat/services/chat';
 
@@ -67,6 +77,8 @@ function ChatPage() {
         setUserOnline,
         setUserOffline,
         clearChatData,
+        currentCall,
+        setCurrentCall,
     } = useChatStore();
 
     // Local state for search query (filters existing conversations)
@@ -121,6 +133,15 @@ function ChatPage() {
     useEffect(() => {
         if (!user?.id) return;
 
+        // ====================================================================
+        // INITIALIZE WEBRTC
+        // ====================================================================
+        initializeWebRTC();
+
+        // ====================================================================
+        // MESSAGE EVENT LISTENERS
+        // ====================================================================
+
         // Listen for new messages
         const cleanupNewMessage = onNewMessage(({ conversationId, message }) => {
             addMessage(conversationId, message);
@@ -136,6 +157,10 @@ function ChatPage() {
             removeMessage(conversationId, messageId);
         });
 
+        // ====================================================================
+        // TYPING INDICATORS
+        // ====================================================================
+
         // Listen for typing indicators
         const cleanupUserTyping = onUserTyping(({ conversationId, username, userId }) => {
             addTypingUser(userId, username, conversationId);
@@ -145,6 +170,10 @@ function ChatPage() {
             removeTypingUser(userId, conversationId);
         });
 
+        // ====================================================================
+        // ONLINE STATUS
+        // ====================================================================
+
         // Listen for online/offline status
         const cleanupUserOnline = onUserOnline(({ userId }) => {
             setUserOnline(userId);
@@ -152,6 +181,42 @@ function ChatPage() {
 
         const cleanupUserOffline = onUserOffline(({ userId }) => {
             setUserOffline(userId);
+        });
+
+        // ====================================================================
+        // VIDEO CALL LISTENERS
+        // ====================================================================
+
+        // Listen for incoming calls
+        const cleanupIncomingCall = onIncomingCall((callInfo: CallInfo) => {
+            console.log('[ChatPage] Incoming call from:', callInfo);
+
+            // Find conversation to get user details
+            const conversation = conversations.find(
+                conv => conv.conversationId === callInfo.conversationId
+            );
+
+            if (conversation) {
+                // Update call info with proper user details
+                const updatedCallInfo: CallInfo = {
+                    ...callInfo,
+                    remoteUserName: conversation.name,
+                    remoteUserAvatar: conversation.avatar,
+                };
+                setCurrentCall(updatedCallInfo);
+            } else {
+                setCurrentCall(callInfo);
+            }
+        });
+
+        // Listen for call state changes
+        const cleanupCallStateChange = onCallStateChange((state) => {
+            console.log('[ChatPage] Call state changed:', state);
+
+            // Clear call when ended
+            if (state === 'ended' && currentCall) {
+                setCurrentCall(null);
+            }
         });
 
         // Cleanup all listeners on unmount
@@ -163,8 +228,10 @@ function ChatPage() {
             cleanupUserStopTyping();
             cleanupUserOnline();
             cleanupUserOffline();
+            cleanupIncomingCall();
+            cleanupCallStateChange();
         };
-    }, [user?.id, addMessage, updateMessage, removeMessage, addTypingUser, removeTypingUser, setUserOnline, setUserOffline]);
+    }, [user?.id, conversations, currentCall, addMessage, updateMessage, removeMessage, addTypingUser, removeTypingUser, setUserOnline, setUserOffline, setCurrentCall]);
 
     // Join/leave conversation rooms when selection changes
     useEffect(() => {
@@ -364,6 +431,71 @@ function ChatPage() {
     const handleOpenGroupInfo = () => {
         setIsGroupInfoPanelOpen(true);
     };
+
+    /**
+     * Start a video call with the selected contact
+     */
+    const handleStartCall = async () => {
+        if (!selectedContact) return;
+
+        // Check if WebRTC is supported
+        if (!checkWebRTCSupport()) {
+            toast.error(
+                'Video Calling Not Supported',
+                {
+                    description: 'Video calling requires a modern web browser with WebRTC support. ' +
+                        'If you\'re using a desktop app, please try opening the app in a web browser.'
+                }
+            );
+            return;
+        }
+
+        try {
+            console.log('[ChatPage] Starting call with:', selectedContact.name);
+
+            // Create call info
+            const callInfo: CallInfo = {
+                conversationId: selectedContact.conversationId,
+                remoteUserId: selectedContact.id,
+                remoteUserName: selectedContact.name,
+                remoteUserAvatar: selectedContact.avatar,
+                direction: 'outgoing',
+                state: 'calling'
+            };
+
+            // Set in store (this will show VideoCallWindow)
+            setCurrentCall(callInfo);
+
+            // Start the WebRTC call
+            await startCall(
+                selectedContact.conversationId,
+                selectedContact.id,
+                selectedContact.name,
+                selectedContact.avatar
+            );
+        } catch (error: any) {
+            console.error('[ChatPage] Failed to start call:', error);
+
+            // Clear call from store
+            setCurrentCall(null);
+
+            // Show error to user
+            toast.error(
+                'Failed to Start Call',
+                {
+                    description: error.message || 'Could not start the video call. Please try again.'
+                }
+            );
+        }
+    };
+
+    /**
+     * Handle closing the video call window
+     */
+    const handleCloseCall = () => {
+        setCurrentCall(null);
+    };
+
     // Check if consecutive messages are from the same sender for grouping
     const shouldShowAvatar = (index: number) => {
         if (index === 0) return true;
@@ -614,6 +746,7 @@ function ChatPage() {
                         <ChatHeader
                             contact={selectedContact}
                             onOpenGroupInfo={handleOpenGroupInfo}
+                            onStartCall={handleStartCall}
                         />
 
                         {/* Messages area */}
@@ -703,6 +836,14 @@ function ChatPage() {
                         setSelectedConversation(null);
                         await fetchConversations();
                     }}
+                />
+            )}
+
+            {/* Video Call Window */}
+            {currentCall && (
+                <VideoCallWindow
+                    callInfo={currentCall}
+                    onClose={handleCloseCall}
                 />
             )}
         </div>
