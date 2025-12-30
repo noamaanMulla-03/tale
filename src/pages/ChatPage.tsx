@@ -15,7 +15,7 @@ import { Search, LogOut, Settings, User } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import useChatStore from '@/store/useChatStore';
 import { useNavigate } from 'react-router-dom';
-import API_URL from '@/config';
+import { getAvatarUrl, getUserInitials } from '@/lib/avatar';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -50,8 +50,6 @@ function ChatPage() {
         conversations,
         messages: allMessages,
         selectedConversationId,
-        isLoadingConversations,
-        isLoadingMessages,
         fetchConversations,
         fetchMessages,
         sendMessage,
@@ -66,21 +64,6 @@ function ChatPage() {
         setUserOffline,
         clearChatData,
     } = useChatStore();
-
-    // Get user initials for avatar fallback
-    const getUserInitials = () => {
-        if (!user?.username) return 'U';
-        return user.username.substring(0, 2).toUpperCase();
-    };
-
-    // Get full avatar URL (prepend API_URL if it's a relative path)
-    const getAvatarUrl = () => {
-        if (!user?.avatarUrl) return undefined;
-        // If avatarUrl starts with http/https, return as is
-        if (user.avatarUrl.startsWith('http')) return user.avatarUrl;
-        // Otherwise prepend API_URL
-        return `${API_URL}${user.avatarUrl}`;
-    };
 
     // Local state for search query
     const [searchQuery, setSearchQuery] = useState('');
@@ -282,9 +265,9 @@ function ChatPage() {
                                 className="text-gray-400 hover:text-white hover:bg-white/10"
                             >
                                 <Avatar className="h-8 w-8 border border-white/10">
-                                    <AvatarImage src={getAvatarUrl()} alt={user?.username} />
+                                    <AvatarImage src={getAvatarUrl(user?.avatarUrl)} alt={user?.username} />
                                     <AvatarFallback className="bg-orange-500/20 text-orange-500 text-xs font-semibold">
-                                        {getUserInitials()}
+                                        {getUserInitials(user?.username)}
                                     </AvatarFallback>
                                 </Avatar>
                             </Button>

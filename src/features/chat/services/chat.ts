@@ -8,9 +8,6 @@
 // Import axios instance (with auth interceptors)
 import api from '@/lib/api';
 
-// Import types
-import { Message } from '@/types/chat';
-
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================

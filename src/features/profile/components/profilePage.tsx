@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { FileUpload } from '@/components/ui/file-upload';
 import { uploadProfileSetup, getUserProfile } from '../services/profileSetup';
 import { useNavigate } from 'react-router-dom';
-import API_URL from '@/config';
+import { getAvatarUrl } from '@/lib/avatar';
 
 // Zod schema for profile validation
 const profileSchema = z.object({
@@ -68,14 +68,12 @@ export function ProfilePage() {
 
                 // Set avatar preview if exists
                 if (profile.avatarUrl) {
-                    const fullAvatarUrl = profile.avatarUrl.startsWith('http')
-                        ? profile.avatarUrl
-                        : `${API_URL}${profile.avatarUrl}`;
-                    setAvatarPreview(fullAvatarUrl);
+                    const fullAvatarUrl = getAvatarUrl(profile.avatarUrl);
+                    if (fullAvatarUrl) setAvatarPreview(fullAvatarUrl);
                 }
             } catch (error) {
                 // If profile doesn't exist yet, that's fine - user is setting it up for first time
-                console.log('No existing profile data');
+                // Silently ignore - this is expected for new users
             } finally {
                 setIsLoading(false);
             }
