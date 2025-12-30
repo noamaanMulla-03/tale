@@ -101,7 +101,7 @@ export function ProfilePage() {
                 formData.append('bio', bio);
             }
 
-            const response = await uploadProfileSetup(formData);
+            await uploadProfileSetup(formData);
             toast.success('Profile saved successfully!');
 
             // Update user profile completion status
