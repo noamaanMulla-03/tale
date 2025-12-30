@@ -11,7 +11,7 @@ import { MessageInput } from '@/features/chat/components/MessageInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, LogOut, Settings, User } from 'lucide-react';
+import { Search, LogOut, Settings, User, UserPlus, X } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import useChatStore from '@/store/useChatStore';
 import { useNavigate } from 'react-router-dom';
@@ -39,6 +39,8 @@ import {
     emitTyping,
     emitStopTyping,
 } from '@/lib/socket';
+import { searchUsers, UserSearchResult } from '@/features/auth/services/user';
+import { createOrGetConversation } from '@/features/chat/services/chat';
 
 function ChatPage() {
     // Get user info and logout function from auth store
@@ -65,8 +67,16 @@ function ChatPage() {
         clearChatData,
     } = useChatStore();
 
-    // Local state for search query
+    // Local state for search query (filters existing conversations)
     const [searchQuery, setSearchQuery] = useState('');
+
+    // State for user search functionality (finding new users to chat with)
+    const [isSearchingUsers, setIsSearchingUsers] = useState(false); // Toggle between conversation search and user search
+    const [userSearchQuery, setUserSearchQuery] = useState(''); // User search input
+    const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([]); // Search results
+    const [isLoadingSearch, setIsLoadingSearch] = useState(false); // Loading state for search
+    const [searchError, setSearchError] = useState<string | null>(null); // Error message for search
+
     // Ref for auto-scrolling to bottom of messages
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -231,7 +241,98 @@ function ChatPage() {
     const typingUsersInConversation = selectedConversationId
         ? getTypingUsers(selectedConversationId)
         : [];
+    // ========================================================================
+    // USER SEARCH HANDLERS
+    // ========================================================================
 
+    /**
+     * Toggle between conversation search and new user search modes
+     * When entering user search mode, clear previous search results
+     */
+    const handleToggleUserSearch = () => {
+        setIsSearchingUsers(!isSearchingUsers);
+        // Clear search states when toggling
+        if (!isSearchingUsers) {
+            setUserSearchQuery('');
+            setUserSearchResults([]);
+            setSearchError(null);
+        }
+    };
+
+    /**
+     * Perform user search with debouncing
+     * Searches for users by username or display name
+     * Minimum 2 characters required
+     */
+    const handleUserSearch = async (query: string) => {
+        setUserSearchQuery(query);
+        setSearchError(null);
+
+        // Clear results if query is too short
+        if (query.trim().length < 2) {
+            setUserSearchResults([]);
+            return;
+        }
+
+        // Set loading state
+        setIsLoadingSearch(true);
+
+        try {
+            // Call API to search users
+            const response = await searchUsers(query);
+            setUserSearchResults(response.users);
+
+            // Show message if no results found
+            if (response.users.length === 0) {
+                setSearchError('No users found matching your search');
+            }
+        } catch (error) {
+            console.error('User search failed:', error);
+            setSearchError('Failed to search users. Please try again.');
+            setUserSearchResults([]);
+        } finally {
+            setIsLoadingSearch(false);
+        }
+    };
+
+    /**
+     * Start a new conversation with a selected user from search results
+     * Creates or retrieves existing conversation, then switches to it
+     */
+    const handleStartConversation = async (user: UserSearchResult) => {
+        try {
+            // Show loading state (could add a spinner on the user card)
+            setIsLoadingSearch(true);
+
+            // Call API to create or get existing conversation
+            const conversation = await createOrGetConversation(user.id);
+
+            // Refresh conversations list to include the new/existing conversation
+            await fetchConversations();
+
+            // Switch to the conversation
+            // Find the conversation in the updated list
+            const newContact = conversations.find(
+                conv => conv.conversationId === conversation.id
+            );
+
+            if (newContact) {
+                setSelectedConversation(conversation.id);
+                // Fetch messages for this conversation
+                await fetchMessages(conversation.id);
+            }
+
+            // Exit search mode and clear search
+            setIsSearchingUsers(false);
+            setUserSearchQuery('');
+            setUserSearchResults([]);
+        } catch (error) {
+            console.error('Failed to start conversation:', error);
+            setSearchError('Failed to start conversation. Please try again.');
+        } finally {
+            setIsLoadingSearch(false);
+        }
+    };
     // Check if consecutive messages are from the same sender for grouping
     const shouldShowAvatar = (index: number) => {
         if (index === 0) return true;
@@ -299,37 +400,145 @@ function ChatPage() {
                     </DropdownMenu>
                 </div>
 
-                {/* Search bar */}
+                {/* Search bar with mode toggle */}
                 <div className="p-4 border-b border-white/10">
+                    {/* Search mode toggle button */}
+                    <div className="flex gap-2 mb-3">
+                        <Button
+                            onClick={handleToggleUserSearch}
+                            className={`flex-1 ${isSearchingUsers
+                                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                                    : 'bg-white/5 hover:bg-white/10 text-gray-400'
+                                }`}
+                            size="sm"
+                        >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            {isSearchingUsers ? 'Searching Users' : 'New Chat'}
+                        </Button>
+                        {isSearchingUsers && (
+                            <Button
+                                onClick={handleToggleUserSearch}
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-white hover:bg-white/10"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* Search input */}
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
                         <Input
                             type="text"
-                            placeholder="Search conversations..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={isSearchingUsers ? "Search users to chat..." : "Search conversations..."}
+                            value={isSearchingUsers ? userSearchQuery : searchQuery}
+                            onChange={(e) => {
+                                if (isSearchingUsers) {
+                                    handleUserSearch(e.target.value);
+                                } else {
+                                    setSearchQuery(e.target.value);
+                                }
+                            }}
                             className="pl-10 bg-[#1a1a1a]/50 border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-orange-500/50 focus-visible:border-orange-500/50"
                         />
                     </div>
+
+                    {/* Search hints */}
+                    {isSearchingUsers && (
+                        <p className="text-xs text-gray-500 mt-2">
+                            Search by username or display name (min 2 characters)
+                        </p>
+                    )}
                 </div>
 
-                {/* Contacts list */}
+                {/* Contacts/Search Results list */}
                 <ScrollArea className="flex-1">
                     <div className="space-y-0">
-                        {filteredContacts.length > 0 ? (
-                            filteredContacts.map((contact) => (
-                                <ContactItem
-                                    key={contact.id}
-                                    contact={contact}
-                                    isActive={selectedContact?.id === contact.id}
-                                    onClick={() => handleContactSelect(contact)}
-                                />
-                            ))
+                        {isSearchingUsers ? (
+                            // USER SEARCH MODE - Show search results
+                            <>
+                                {isLoadingSearch ? (
+                                    // Loading state
+                                    <div className="p-8 text-center text-gray-500">
+                                        <div className="animate-spin h-6 w-6 border-2 border-orange-500 border-t-transparent rounded-full mx-auto mb-2" />
+                                        <p className="text-sm">Searching users...</p>
+                                    </div>
+                                ) : searchError ? (
+                                    // Error state
+                                    <div className="p-8 text-center text-gray-500">
+                                        <p className="text-sm">{searchError}</p>
+                                    </div>
+                                ) : userSearchResults.length > 0 ? (
+                                    // Search results
+                                    userSearchResults.map((user) => (
+                                        <div
+                                            key={user.id}
+                                            onClick={() => handleStartConversation(user)}
+                                            className="flex items-center gap-3 p-4 cursor-pointer transition-all duration-200 border-l-2 border-l-transparent hover:bg-white/5 hover:border-l-orange-500 border-b border-white/5"
+                                        >
+                                            {/* User avatar */}
+                                            <Avatar className="h-12 w-12 border-2 border-white/10">
+                                                <AvatarImage src={getAvatarUrl(user.avatarUrl)} alt={user.username} />
+                                                <AvatarFallback className="bg-orange-500/20 text-orange-500 font-semibold">
+                                                    {getUserInitials(user.username)}
+                                                </AvatarFallback>
+                                            </Avatar>
+
+                                            {/* User info */}
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-white font-semibold text-sm truncate">
+                                                    {user.displayName}
+                                                </h3>
+                                                <p className="text-gray-500 text-xs truncate">
+                                                    @{user.username}
+                                                </p>
+                                            </div>
+
+                                            {/* Start chat indicator */}
+                                            <div className="text-orange-500">
+                                                <UserPlus className="h-5 w-5" />
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : userSearchQuery.length >= 2 ? (
+                                    // No results found (after valid search)
+                                    <div className="p-8 text-center text-gray-500">
+                                        <UserPlus className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">No users found</p>
+                                        <p className="text-xs mt-1">Try a different search term</p>
+                                    </div>
+                                ) : (
+                                    // Initial state - waiting for input
+                                    <div className="p-8 text-center text-gray-500">
+                                        <Search className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">Search for users to start chatting</p>
+                                    </div>
+                                )}
+                            </>
                         ) : (
-                            // No contacts found message
-                            <div className="p-8 text-center text-gray-500">
-                                <p className="text-sm">No conversations found</p>
-                            </div>
+                            // CONVERSATION MODE - Show existing conversations
+                            <>
+                                {filteredContacts.length > 0 ? (
+                                    filteredContacts.map((contact) => (
+                                        <ContactItem
+                                            key={contact.id}
+                                            contact={contact}
+                                            isActive={selectedContact?.id === contact.id}
+                                            onClick={() => handleContactSelect(contact)}
+                                        />
+                                    ))
+                                ) : (
+                                    // No conversations found
+                                    <div className="p-8 text-center text-gray-500">
+                                        <p className="text-sm">No conversations found</p>
+                                        {searchQuery && (
+                                            <p className="text-xs mt-1">Try a different search term</p>
+                                        )}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </ScrollArea>

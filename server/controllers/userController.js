@@ -276,6 +276,66 @@ const userController = {
             console.error('Get profile error:', err);
             next(err);
         }
+    },
+
+    /**
+     * Search for users by username or display name
+     * Protected route - requires authentication
+     * Query parameter: q (search term)
+     * 
+     * Use cases:
+     * - Find users to start new conversations
+     * - Search contacts by name
+     * - Auto-complete in user selection fields
+     * 
+     * @route GET /users/search?q=searchTerm
+     * @access Protected (requires JWT token)
+     */
+    searchUsers: async (req, res, next) => {
+        // Get search query from URL query parameters
+        const searchQuery = req.query.q;
+        // Get current user ID from JWT token (added by authenticateToken middleware)
+        const currentUserId = req.user.id;
+
+        try {
+            // Validate search query
+            if (!searchQuery || searchQuery.trim().length === 0) {
+                return res.status(400).json({ 
+                    error: 'Search query is required',
+                    message: 'Please provide a search term using the "q" query parameter'
+                });
+            }
+
+            // Minimum search length to prevent overly broad searches
+            if (searchQuery.trim().length < 2) {
+                return res.status(400).json({ 
+                    error: 'Search query too short',
+                    message: 'Please enter at least 2 characters to search'
+                });
+            }
+
+            // Search for users using the model
+            const users = await userModel.searchUsers(searchQuery, currentUserId);
+
+            // Map snake_case DB fields to camelCase for frontend consistency
+            const formattedUsers = users.map(user => ({
+                id: user.id,
+                username: user.username,
+                displayName: user.display_name,
+                avatarUrl: user.avatar_url
+            }));
+
+            // Respond with search results
+            res.status(200).json({ 
+                users: formattedUsers,
+                query: searchQuery,
+                count: formattedUsers.length
+            });
+        } catch (err) {
+            // Log and pass errors to error handling middleware
+            console.error('User search error:', err);
+            next(err);
+        }
     }
 };
 

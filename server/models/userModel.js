@@ -132,6 +132,48 @@ const userModel = {
             throw err;
         }
     },
+
+    /**
+     * Search for users by username or display name
+     * Uses ILIKE for case-insensitive partial matching
+     * Excludes the current user from results
+     * Returns limited set of public user information
+     * 
+     * @param {string} searchQuery - Search term to match against username/display_name
+     * @param {number} currentUserId - ID of the user performing the search (to exclude from results)
+     * @param {number} limit - Maximum number of results to return (default: 20)
+     * @returns {Array} Array of user objects with id, username, display_name, avatar_url
+     */
+    searchUsers: async (searchQuery, currentUserId, limit = 20) => {
+        // Build query to search by username or display_name
+        // Use ILIKE for case-insensitive search
+        // Exclude current user from results
+        // Order by username for consistent results
+        const queryText = `
+            SELECT id, username, display_name, avatar_url
+            FROM users
+            WHERE (username ILIKE $1 OR display_name ILIKE $1)
+              AND id != $2
+              AND email_verified = true
+            ORDER BY username
+            LIMIT $3
+        `;
+        
+        // Add wildcards for partial matching (e.g., "john" matches "john_doe")
+        const searchPattern = `%${searchQuery}%`;
+        const queryParams = [searchPattern, currentUserId, limit];
+
+        try {
+            // Execute the query
+            const res = await query(queryText, queryParams);
+            console.log(`[+] Found ${res.rows.length} users matching "${searchQuery}"`);
+            return res.rows;
+        } catch (err) {
+            // Handle errors
+            console.error(`[-] Error searching users: ${err.message}`);
+            throw err;
+        }
+    },
 };
 
 // export the user model

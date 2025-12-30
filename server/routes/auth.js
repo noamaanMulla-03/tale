@@ -27,5 +27,21 @@ router.post('/profile-setup', authenticateToken, upload.single('avatar'), userCo
 // get user profile route (protected)
 router.get('/profile', authenticateToken, userController.getUserProfileData);
 
+// ============================================================================
+// USER SEARCH ROUTES
+// ============================================================================
+
+/**
+ * GET /users/search
+ * Search for users by username or display name
+ * Query parameters:
+ *   - q: search term (required, min 2 characters)
+ * Returns: Array of matching users (excludes current user)
+ * 
+ * Example: GET /users/search?q=john
+ * Response: { users: [...], query: "john", count: 5 }
+ */
+router.get('/users/search', authenticateToken, userController.searchUsers);
+
 // export router
 export default router;
