@@ -18,9 +18,11 @@ interface MessageBubbleProps {
     showAvatar?: boolean;
     // Group consecutive messages from same sender
     isGrouped?: boolean;
+    // Whether this is a group chat (always show sender names for received messages)
+    isGroupChat?: boolean;
 }
 
-export function MessageBubble({ message, showAvatar = true, isGrouped = false }: MessageBubbleProps) {
+export function MessageBubble({ message, showAvatar = true, isGrouped = false, isGroupChat = false }: MessageBubbleProps) {
     // Get current user from auth store to determine message alignment
     const { user } = useAuthStore();
 
@@ -74,8 +76,9 @@ export function MessageBubble({ message, showAvatar = true, isGrouped = false }:
                     isSent && "items-end"
                 )}
             >
-                {/* Sender name (only for received messages and first in group) */}
-                {!isSent && showAvatar && (
+                {/* Sender name for received messages */}
+                {/* Show if: not sent by current user AND (it's a group chat OR it's the first message in sequence) */}
+                {!isSent && (isGroupChat || showAvatar) && (
                     <span className="text-xs text-gray-400 mb-1 ml-1">
                         {message.senderName}
                     </span>

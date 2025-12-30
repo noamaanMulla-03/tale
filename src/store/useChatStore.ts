@@ -165,14 +165,14 @@ const convertConversationToContact = (conv: ConversationResponse): Contact => {
 
     return {
         // ID field: for groups use conversation_id, for direct use other_user_id
-        id: isGroup ? conv.conversation_id : conv.other_user_id,
+        id: isGroup ? conv.conversation_id : (conv.other_user_id ?? 0),
         conversationId: conv.conversation_id,
         conversationType: conv.conversation_type as 'direct' | 'group',
 
         // For direct messages: Use other user's info
         // For groups: Use placeholder values (will be overridden by group fields)
-        name: isGroup ? (conv.group_name || 'Unnamed Group') : conv.other_display_name,
-        username: isGroup ? '' : conv.other_username,
+        name: isGroup ? (conv.group_name || 'Unnamed Group') : (conv.other_display_name ?? 'Unknown'),
+        username: isGroup ? '' : (conv.other_username ?? ''),
         avatar: isGroup
             ? (conv.group_avatar || '/default-group-avatar.png')
             : (conv.other_avatar_url || '/default-avatar.png'),

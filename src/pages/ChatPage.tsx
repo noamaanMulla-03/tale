@@ -8,10 +8,12 @@ import { ContactItem } from '@/features/chat/components/ContactItem';
 import { ChatHeader } from '@/features/chat/components/ChatHeader';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
 import { MessageInput } from '@/features/chat/components/MessageInput';
+import { CreateGroupDialog } from '@/features/chat/components/CreateGroupDialog';
+import { GroupInfoPanel } from '@/features/chat/components/GroupInfoPanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, LogOut, Settings, User, UserPlus, X } from 'lucide-react';
+import { Search, LogOut, Settings, User, UserPlus, X, Users as UsersIcon } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import useChatStore from '@/store/useChatStore';
 import { useNavigate } from 'react-router-dom';
@@ -76,6 +78,12 @@ function ChatPage() {
     const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([]); // Search results
     const [isLoadingSearch, setIsLoadingSearch] = useState(false); // Loading state for search
     const [searchError, setSearchError] = useState<string | null>(null); // Error message for search
+
+    // State for group creation dialog
+    const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
+
+    // State for group info panel
+    const [isGroupInfoPanelOpen, setIsGroupInfoPanelOpen] = useState(false);
 
     // Ref for auto-scrolling to bottom of messages
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -327,6 +335,35 @@ function ChatPage() {
             setIsLoadingSearch(false);
         }
     };
+
+    /**
+     * Handle successful group creation
+     * Refreshes conversations list and selects the newly created group
+     */
+    const handleGroupCreated = async (groupId: number) => {
+        try {
+            // Close the create group dialog
+            setIsCreateGroupDialogOpen(false);
+
+            // Refresh conversations to include the new group
+            await fetchConversations();
+
+            // Select the newly created group
+            setSelectedConversation(groupId);
+
+            // Fetch messages for the new group (will be empty initially)
+            await fetchMessages(groupId);
+        } catch (error) {
+            console.error('Failed to handle group creation:', error);
+        }
+    };
+
+    /**
+     * Toggle the group info panel visibility
+     */
+    const handleOpenGroupInfo = () => {
+        setIsGroupInfoPanelOpen(true);
+    };
     // Check if consecutive messages are from the same sender for grouping
     const shouldShowAvatar = (index: number) => {
         if (index === 0) return true;
@@ -408,6 +445,14 @@ function ChatPage() {
                         >
                             <UserPlus className="h-4 w-4 mr-2" />
                             {isSearchingUsers ? 'Searching Users' : 'New Chat'}
+                        </Button>
+                        <Button
+                            onClick={() => setIsCreateGroupDialogOpen(true)}
+                            className="bg-white/5 hover:bg-white/10 text-gray-400"
+                            size="sm"
+                        >
+                            <UsersIcon className="h-4 w-4 mr-2" />
+                            Create Group
                         </Button>
                         {isSearchingUsers && (
                             <Button
@@ -543,7 +588,10 @@ function ChatPage() {
                 {selectedContact ? (
                     <>
                         {/* Chat header with contact info */}
-                        <ChatHeader contact={selectedContact} />
+                        <ChatHeader
+                            contact={selectedContact}
+                            onOpenGroupInfo={handleOpenGroupInfo}
+                        />
 
                         {/* Messages area */}
                         <ScrollArea className="flex-1 bg-[#1a1a1a]">
@@ -555,6 +603,7 @@ function ChatPage() {
                                             message={message}
                                             showAvatar={shouldShowAvatar(index)}
                                             isGrouped={!shouldShowAvatar(index)}
+                                            isGroupChat={selectedContact?.conversationType === 'group'}
                                         />
                                     ))
                                 ) : (
@@ -611,6 +660,28 @@ function ChatPage() {
                     </div>
                 )}
             </div>
+
+            {/* Create Group Dialog */}
+            <CreateGroupDialog
+                open={isCreateGroupDialogOpen}
+                onClose={() => setIsCreateGroupDialogOpen(false)}
+                availableContacts={conversations.filter((c: Contact) => c.conversationType === 'direct')}
+                onGroupCreated={handleGroupCreated}
+            />
+
+            {/* Group Info Panel */}
+            {selectedContact?.conversationType === 'group' && (
+                <GroupInfoPanel
+                    group={selectedContact}
+                    isOpen={isGroupInfoPanelOpen}
+                    onClose={() => setIsGroupInfoPanelOpen(false)}
+                    onLeaveGroup={async () => {
+                        setIsGroupInfoPanelOpen(false);
+                        setSelectedConversation(null);
+                        await fetchConversations();
+                    }}
+                />
+            )}
         </div>
     );
 }

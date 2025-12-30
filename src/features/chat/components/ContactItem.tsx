@@ -1,11 +1,21 @@
-// Contact List Item Component
-// Displays a single contact in the sidebar with avatar, name, last message preview, and unread count
+// ============================================================================
+// CONTACT LIST ITEM COMPONENT
+// ============================================================================
+// Displays a single contact/group in the sidebar
+// Features:
+// - Avatar with online indicator (direct messages only)
+// - Name, last message preview, timestamp
+// - Unread count badge
+// - Group indicator icon for group chats
+// - Participant count for groups
+// ============================================================================
 
 import { Contact } from '@/types/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { Users } from 'lucide-react';
 
 interface ContactItemProps {
     contact: Contact;
@@ -26,6 +36,15 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
     // Format the timestamp to relative time (e.g., "5 minutes ago")
     const formattedTime = formatDistanceToNow(new Date(contact.timestamp), { addSuffix: false });
 
+    // Determine if this is a group chat
+    const isGroupChat = contact.conversationType === 'group';
+
+    // Get display name (group name for groups, contact name for direct)
+    const displayName = isGroupChat ? contact.groupName || 'Unnamed Group' : contact.name;
+
+    // Get display avatar (group avatar for groups, contact avatar for direct)
+    const displayAvatar = isGroupChat ? contact.groupAvatar || '/default-group-avatar.png' : contact.avatar;
+
     return (
         <div
             onClick={onClick}
@@ -42,28 +61,48 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
                 "border-b border-white/5"
             )}
         >
-            {/* Avatar with online status indicator */}
+            {/* Avatar with online status indicator (direct) or group icon */}
             <div className="relative shrink-0">
                 <Avatar className="h-12 w-12 border-2 border-white/10">
-                    <AvatarImage src={contact.avatar} alt={contact.name} />
+                    <AvatarImage src={displayAvatar} alt={displayName} />
                     <AvatarFallback className="bg-orange-500/20 text-orange-500 font-semibold">
-                        {getInitials(contact.name)}
+                        {/* For groups, show Users icon instead of initials */}
+                        {isGroupChat ? (
+                            <Users className="h-5 w-5" />
+                        ) : (
+                            getInitials(displayName)
+                        )}
                     </AvatarFallback>
                 </Avatar>
 
-                {/* Online status dot */}
-                {contact.online && (
-                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#2a2a2a] rounded-full" />
+                {/* Online status dot (only for direct messages) */}
+                {!isGroupChat && contact.online && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#2a2a2a] rounded-full" />
+                )}
+
+                {/* Group indicator badge (only for groups) */}
+                {isGroupChat && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#2a2a2a] border border-white/10 rounded-full flex items-center justify-center">
+                        <Users className="h-3 w-3 text-orange-500" />
+                    </div>
                 )}
             </div>
 
-            {/* Contact info section */}
+            {/* Contact/Group info section */}
             <div className="flex-1 min-w-0 overflow-hidden">
                 {/* Name and time row */}
                 <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-white font-semibold text-sm truncate">
-                        {contact.name}
-                    </h3>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm truncate">
+                            {displayName}
+                        </h3>
+                        {/* Participant count for groups */}
+                        {isGroupChat && contact.participantCount && (
+                            <span className="text-xs text-gray-500 shrink-0">
+                                ({contact.participantCount})
+                            </span>
+                        )}
+                    </div>
                     <span className="text-xs text-gray-500 shrink-0 ml-2">
                         {formattedTime}
                     </span>
