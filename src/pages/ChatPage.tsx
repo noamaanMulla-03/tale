@@ -13,7 +13,7 @@ import { GroupInfoPanel } from '@/features/chat/components/GroupInfoPanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, LogOut, Settings, User, UserPlus, X, Users as UsersIcon } from 'lucide-react';
+import { Search, LogOut, Settings, User, UserPlus, X, Users as UsersIcon, Plus, Edit3 } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import useChatStore from '@/store/useChatStore';
 import { useNavigate } from 'react-router-dom';
@@ -431,58 +431,81 @@ function ChatPage() {
                     </DropdownMenu>
                 </div>
 
-                {/* Search bar with mode toggle */}
+                {/* Search and compose */}
                 <div className="p-4 border-b border-white/10">
-                    {/* Search mode toggle button */}
-                    <div className="flex gap-2 mb-3">
-                        <Button
-                            onClick={handleToggleUserSearch}
-                            className={`flex-1 ${isSearchingUsers
-                                ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                                : 'bg-white/5 hover:bg-white/10 text-gray-400'
-                                }`}
-                            size="sm"
-                        >
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            {isSearchingUsers ? 'Searching Users' : 'New Chat'}
-                        </Button>
-                        <Button
-                            onClick={() => setIsCreateGroupDialogOpen(true)}
-                            className="bg-white/5 hover:bg-white/10 text-gray-400"
-                            size="sm"
-                        >
-                            <UsersIcon className="h-4 w-4 mr-2" />
-                            Create Group
-                        </Button>
+                    <div className="flex items-center gap-2">
+                        {/* Search Input */}
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <Input
+                                type="text"
+                                placeholder={isSearchingUsers ? "Search users..." : "Search..."}
+                                value={isSearchingUsers ? userSearchQuery : searchQuery}
+                                onChange={(e) => {
+                                    if (isSearchingUsers) {
+                                        handleUserSearch(e.target.value);
+                                    } else {
+                                        setSearchQuery(e.target.value);
+                                    }
+                                }}
+                                className="h-10 pl-9 pr-3 bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-1 focus-visible:ring-orange-500/50 focus-visible:border-orange-500/50 transition-all"
+                            />
+                        </div>
+
+                        {/* Compose Menu */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    className="h-10 w-10 p-0 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/30 transition-all duration-200 hover:scale-105 border-0"
+                                    title="New conversation"
+                                >
+                                    <Edit3 className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                className="w-48 bg-[#2a2a2a] border-white/20 text-white"
+                            >
+                                <DropdownMenuItem
+                                    onClick={handleToggleUserSearch}
+                                    className="focus:bg-white/10 focus:text-white cursor-pointer py-2.5"
+                                >
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    <span>New Chat</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => setIsCreateGroupDialogOpen(true)}
+                                    className="focus:bg-white/10 focus:text-white cursor-pointer py-2.5"
+                                >
+                                    <UsersIcon className="mr-2 h-4 w-4" />
+                                    <span>Create Group</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Cancel search button */}
                         {isSearchingUsers && (
                             <Button
                                 onClick={handleToggleUserSearch}
                                 variant="ghost"
-                                size="sm"
-                                className="text-gray-400 hover:text-white hover:bg-white/10"
+                                className="h-10 w-10 p-0 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-200"
+                                title="Cancel search"
                             >
                                 <X className="h-4 w-4" />
                             </Button>
                         )}
                     </div>
 
-                    {/* Search input */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                        <Input
-                            type="text"
-                            placeholder={isSearchingUsers ? "Search users to chat..." : "Search conversations..."}
-                            value={isSearchingUsers ? userSearchQuery : searchQuery}
-                            onChange={(e) => {
-                                if (isSearchingUsers) {
-                                    handleUserSearch(e.target.value);
-                                } else {
-                                    setSearchQuery(e.target.value);
-                                }
-                            }}
-                            className="pl-10 bg-[#1a1a1a]/50 border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-orange-500/50 focus-visible:border-orange-500/50"
-                        />
-                    </div>
+                    {/* Active search indicator */}
+                    {isSearchingUsers && (
+                        <div className="flex items-center justify-between text-xs text-gray-400 px-1 mt-3">
+                            <span className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                Searching for users
+                            </span>
+                        </div>
+                    )}
+
 
                     {/* Search hints */}
                     {isSearchingUsers && (
