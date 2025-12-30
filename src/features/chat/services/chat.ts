@@ -15,16 +15,29 @@ import api from '@/lib/api';
 /**
  * Conversation object returned from API
  * Includes other participant info and last message preview
+ * UPDATED: Now supports both direct messages and group chats
  */
 export interface ConversationResponse {
     conversation_id: number;
     created_at: string;
     updated_at: string;
-    // Other participant info
-    other_user_id: number;
-    other_username: string;
-    other_display_name: string;
+
+    // Conversation type and group data
+    conversation_type: 'direct' | 'group';
+    group_name: string | null;
+    group_avatar: string | null;
+    group_description: string | null;
+    group_creator_id: number | null;
+
+    // Other participant info (for direct messages, NULL for groups)
+    other_user_id: number | null;
+    other_username: string | null;
+    other_display_name: string | null;
     other_avatar_url: string | null;
+
+    // Participant count (useful for groups)
+    participant_count: number;
+
     // Last message preview
     last_message_content: string | null;
     last_message_type: string | null;
@@ -39,16 +52,28 @@ export interface ConversationResponse {
 
 /**
  * Conversation details with full participant list
+ * UPDATED: Now includes group information
  */
 export interface ConversationDetails {
     id: number;
     created_at: string;
     updated_at: string;
+
+    // Conversation type and group data
+    conversation_type: 'direct' | 'group';
+    name: string | null;
+    avatar_url: string | null;
+    description: string | null;
+    created_by: number | null;
+
+    // Participants array with user details
     participants: Array<{
         user_id: number;
         username: string;
         display_name: string;
         avatar_url: string | null;
+        joined_at: string;
+        is_admin: boolean;
     }>;
 }
 
@@ -116,21 +141,17 @@ const getUserConversations = async (): Promise<ConversationResponse[]> => {
  */
 const createOrGetConversation = async (otherUserId: number): Promise<ConversationDetails> => {
     try {
-        console.log(`[DEBUG] About to create conversation with user ${otherUserId}`);
-
         // POST request to /api/chat/conversations
         const response = await api.post('/api/chat/conversations', { otherUserId });
 
         // Log the response
-        console.log(`[+] Created/retrieved conversation with user ${otherUserId}`, response.data);
+        console.log(`[+] Created/retrieved conversation with user ${otherUserId}`);
 
         // Return conversation object
         return response.data.conversation;
-    } catch (error: any) {
-        // Log the error with more details
+    } catch (error) {
+        // Log the error
         console.error('[!] Error creating conversation:', error);
-        console.error('[!] Error response:', error.response?.data);
-        console.error('[!] Error status:', error.response?.status);
         throw error;
     }
 };
@@ -316,6 +337,153 @@ const getTotalUnreadCount = async (): Promise<number> => {
 };
 
 // ============================================================================
+// GROUP CHAT API CALLS
+// ============================================================================
+
+/**
+ * Create a new group conversation
+ * @param groupData - Group name, description, participants, and avatar
+ * @returns Created group conversation details
+ */
+const createGroup = async (groupData: {
+    name: string;
+    description?: string;
+    participantIds: number[];
+    avatarUrl?: string;
+}): Promise<ConversationDetails> => {
+    try {
+        // POST request to /api/chat/groups
+        const response = await api.post('/api/chat/groups', groupData);
+
+        // Log the response
+        console.log(`[+] Created group: ${groupData.name}`);
+
+        // Return conversation object
+        return response.data.conversation;
+    } catch (error) {
+        // Log the error
+        console.error('[!] Error creating group:', error);
+        throw error;
+    }
+};
+
+/**
+ * Update group details (name, description, avatar)
+ * @param conversationId - Group conversation ID
+ * @param updates - Fields to update
+ * @returns Updated conversation details
+ */
+const updateGroupDetails = async (
+    conversationId: number,
+    updates: {
+        name?: string;
+        description?: string;
+        avatarUrl?: string;
+    }
+): Promise<ConversationDetails> => {
+    try {
+        // PATCH request to /api/chat/groups/:conversationId
+        const response = await api.patch(`/api/chat/groups/${conversationId}`, updates);
+
+        // Log the response
+        console.log(`[+] Updated group ${conversationId}`);
+
+        // Return updated conversation object
+        return response.data.conversation;
+    } catch (error) {
+        // Log the error
+        console.error('[!] Error updating group:', error);
+        throw error;
+    }
+};
+
+/**
+ * Get all participants in a group
+ * @param conversationId - Group conversation ID
+ * @returns Array of participant objects
+ */
+const getGroupMembers = async (conversationId: number): Promise<Array<{
+    id: number;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+    joinedAt: string;
+    isAdmin: boolean;
+}>> => {
+    try {
+        // GET request to /api/chat/groups/:conversationId/participants
+        const response = await api.get(`/api/chat/groups/${conversationId}/participants`);
+
+        // Log the response
+        console.log(`[+] Fetched ${response.data.participants.length} group members`);
+
+        // Return participants array
+        return response.data.participants;
+    } catch (error) {
+        // Log the error
+        console.error('[!] Error fetching group members:', error);
+        throw error;
+    }
+};
+
+/**
+ * Add participants to a group
+ * @param conversationId - Group conversation ID
+ * @param userIds - Array of user IDs to add
+ * @returns Updated conversation details
+ */
+const addGroupMembers = async (
+    conversationId: number,
+    userIds: number[]
+): Promise<ConversationDetails> => {
+    try {
+        // POST request to /api/chat/groups/:conversationId/participants
+        const response = await api.post(
+            `/api/chat/groups/${conversationId}/participants`,
+            { userIds }
+        );
+
+        // Log the response
+        console.log(`[+] Added ${userIds.length} members to group ${conversationId}`);
+
+        // Return updated conversation object
+        return response.data.conversation;
+    } catch (error) {
+        // Log the error
+        console.error('[!] Error adding group members:', error);
+        throw error;
+    }
+};
+
+/**
+ * Remove a participant from a group (or leave group)
+ * @param conversationId - Group conversation ID
+ * @param userId - User ID to remove
+ * @returns Success status
+ */
+const removeGroupMember = async (
+    conversationId: number,
+    userId: number
+): Promise<{ success: boolean; message: string }> => {
+    try {
+        // DELETE request to /api/chat/groups/:conversationId/participants/:userId
+        const response = await api.delete(
+            `/api/chat/groups/${conversationId}/participants/${userId}`
+        );
+
+        // Log the response
+        console.log(`[+] Removed user ${userId} from group ${conversationId}`);
+
+        // Return success response
+        return response.data;
+    } catch (error) {
+        // Log the error
+        console.error('[!] Error removing group member:', error);
+        throw error;
+    }
+};
+
+// ============================================================================
 // EXPORTS
 // ============================================================================
 
@@ -329,4 +497,10 @@ export {
     deleteMessage,
     markConversationAsRead,
     getTotalUnreadCount,
+    // Group chat functions
+    createGroup,
+    updateGroupDetails,
+    getGroupMembers,
+    addGroupMembers,
+    removeGroupMember,
 };

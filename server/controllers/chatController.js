@@ -405,6 +405,302 @@ const chatController = {
             next(err);
         }
     },
+
+    // ========================================================================
+    // GROUP CHAT ENDPOINTS
+    // ========================================================================
+
+    /**
+     * POST /api/chat/groups
+     * Create a new group conversation
+     * Body: { 
+     *   name: string (required),
+     *   description: string (optional),
+     *   participantIds: number[] (required, min 2),
+     *   avatarUrl: string (optional)
+     * }
+     * Returns: Created group conversation details
+     */
+    createGroup: async (req, res, next) => {
+        try {
+            const creatorId = req.user.id;
+            const { name, description, participantIds, avatarUrl } = req.body;
+
+            // Validation: Check if name is provided
+            if (!name || name.trim().length === 0) {
+                return res.status(400).json({ 
+                    error: "Group name is required" 
+                });
+            }
+
+            // Validation: Check if participantIds is an array with at least 2 members
+            if (!Array.isArray(participantIds) || participantIds.length < 2) {
+                return res.status(400).json({ 
+                    error: "At least 2 participants are required (including yourself)" 
+                });
+            }
+
+            // Ensure creator is included in participants
+            const allParticipants = [...new Set([creatorId, ...participantIds])];
+
+            // Create group conversation
+            const conversationId = await chatModel.createGroupConversation(
+                creatorId,
+                name,
+                allParticipants,
+                description,
+                avatarUrl
+            );
+
+            // Get full conversation details
+            const conversation = await chatModel.getConversationDetails(conversationId);
+
+            // Emit WebSocket event to all participants (group created)
+            const io = req.app.get('io');
+            allParticipants.forEach(participantId => {
+                io.to(`user_${participantId}`).emit('group_created', {
+                    conversation,
+                    createdBy: creatorId
+                });
+            });
+
+            // Respond with created group
+            res.status(201).json({ conversation });
+        } catch (err) {
+            // Pass errors to error handling middleware
+            next(err);
+        }
+    },
+
+    /**
+     * POST /api/chat/groups/:conversationId/participants
+     * Add participants to a group
+     * Body: { userIds: number[] }
+     * Returns: Updated conversation details
+     */
+    addGroupMembers: async (req, res, next) => {
+        try {
+            const userId = req.user.id;
+            const { conversationId } = req.params;
+            const { userIds } = req.body;
+
+            // Validation: Check if userIds is provided and is an array
+            if (!Array.isArray(userIds) || userIds.length === 0) {
+                return res.status(400).json({ 
+                    error: "userIds array is required" 
+                });
+            }
+
+            // Authorization: Check if user is participant in this conversation
+            const isParticipant = await chatModel.isUserInConversation(userId, conversationId);
+            if (!isParticipant) {
+                return res.status(403).json({ 
+                    error: "You are not a participant in this group" 
+                });
+            }
+
+            // Get conversation details to verify it's a group
+            const conversation = await chatModel.getConversationDetails(conversationId);
+            if (!conversation || conversation.conversation_type !== 'group') {
+                return res.status(400).json({ 
+                    error: "Not a group conversation" 
+                });
+            }
+
+            // Add participants to group
+            await chatModel.addGroupParticipants(conversationId, userIds);
+
+            // Get updated conversation details
+            const updatedConversation = await chatModel.getConversationDetails(conversationId);
+
+            // Emit WebSocket event to all participants (members added)
+            const io = req.app.get('io');
+            updatedConversation.participants.forEach(participant => {
+                io.to(`user_${participant.user_id}`).emit('group_members_added', {
+                    conversationId,
+                    addedMembers: userIds,
+                    addedBy: userId
+                });
+            });
+
+            // Respond with updated conversation
+            res.status(200).json({ conversation: updatedConversation });
+        } catch (err) {
+            // Pass errors to error handling middleware
+            next(err);
+        }
+    },
+
+    /**
+     * DELETE /api/chat/groups/:conversationId/participants/:participantId
+     * Remove a participant from a group (or leave group)
+     * Returns: Success status
+     */
+    removeGroupMember: async (req, res, next) => {
+        try {
+            const userId = req.user.id;
+            const { conversationId, participantId } = req.params;
+            const targetUserId = parseInt(participantId);
+
+            // Authorization: Check if user is participant in this conversation
+            const isParticipant = await chatModel.isUserInConversation(userId, conversationId);
+            if (!isParticipant) {
+                return res.status(403).json({ 
+                    error: "You are not a participant in this group" 
+                });
+            }
+
+            // Get conversation details
+            const conversation = await chatModel.getConversationDetails(conversationId);
+            if (!conversation || conversation.conversation_type !== 'group') {
+                return res.status(400).json({ 
+                    error: "Not a group conversation" 
+                });
+            }
+
+            // Check permissions:
+            // - User can remove themselves (leave group)
+            // - Creator/admin can remove others
+            const isCreator = conversation.created_by === userId;
+            const isSelf = targetUserId === userId;
+
+            if (!isSelf && !isCreator) {
+                return res.status(403).json({ 
+                    error: "Only group admin can remove other members" 
+                });
+            }
+
+            // Cannot remove the creator/admin
+            if (targetUserId === conversation.created_by && !isSelf) {
+                return res.status(403).json({ 
+                    error: "Cannot remove group creator" 
+                });
+            }
+
+            // Remove participant
+            await chatModel.removeGroupParticipant(conversationId, targetUserId);
+
+            // Emit WebSocket event to remaining participants
+            const io = req.app.get('io');
+            const remainingParticipants = await chatModel.getGroupParticipants(conversationId);
+            remainingParticipants.forEach(participant => {
+                io.to(`user_${participant.id}`).emit('group_member_removed', {
+                    conversationId,
+                    removedUserId: targetUserId,
+                    removedBy: userId
+                });
+            });
+
+            // Also notify the removed user
+            io.to(`user_${targetUserId}`).emit('removed_from_group', {
+                conversationId,
+                removedBy: userId
+            });
+
+            // Respond with success
+            res.status(200).json({ 
+                success: true,
+                message: isSelf ? "Left group successfully" : "Member removed successfully"
+            });
+        } catch (err) {
+            // Pass errors to error handling middleware
+            next(err);
+        }
+    },
+
+    /**
+     * PATCH /api/chat/groups/:conversationId
+     * Update group details (name, description, avatar)
+     * Body: { name?: string, description?: string, avatarUrl?: string }
+     * Returns: Updated conversation details
+     */
+    updateGroupDetails: async (req, res, next) => {
+        try {
+            const userId = req.user.id;
+            const { conversationId } = req.params;
+            const { name, description, avatarUrl } = req.body;
+
+            // Authorization: Check if user is participant
+            const isParticipant = await chatModel.isUserInConversation(userId, conversationId);
+            if (!isParticipant) {
+                return res.status(403).json({ 
+                    error: "You are not a participant in this group" 
+                });
+            }
+
+            // Get conversation details
+            const conversation = await chatModel.getConversationDetails(conversationId);
+            if (!conversation || conversation.conversation_type !== 'group') {
+                return res.status(400).json({ 
+                    error: "Not a group conversation" 
+                });
+            }
+
+            // Authorization: Only creator can update group details
+            if (conversation.created_by !== userId) {
+                return res.status(403).json({ 
+                    error: "Only group admin can update group details" 
+                });
+            }
+
+            // Prepare updates object
+            const updates = {};
+            if (name !== undefined) updates.name = name;
+            if (description !== undefined) updates.description = description;
+            if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+
+            // Update group details
+            await chatModel.updateGroupDetails(conversationId, updates);
+
+            // Get updated conversation details
+            const updatedConversation = await chatModel.getConversationDetails(conversationId);
+
+            // Emit WebSocket event to all participants
+            const io = req.app.get('io');
+            updatedConversation.participants.forEach(participant => {
+                io.to(`user_${participant.user_id}`).emit('group_updated', {
+                    conversationId,
+                    updates,
+                    updatedBy: userId
+                });
+            });
+
+            // Respond with updated conversation
+            res.status(200).json({ conversation: updatedConversation });
+        } catch (err) {
+            // Pass errors to error handling middleware
+            next(err);
+        }
+    },
+
+    /**
+     * GET /api/chat/groups/:conversationId/participants
+     * Get all participants in a group
+     * Returns: Array of participant details
+     */
+    getGroupMembers: async (req, res, next) => {
+        try {
+            const userId = req.user.id;
+            const { conversationId } = req.params;
+
+            // Authorization: Check if user is participant
+            const isParticipant = await chatModel.isUserInConversation(userId, conversationId);
+            if (!isParticipant) {
+                return res.status(403).json({ 
+                    error: "You are not a participant in this group" 
+                });
+            }
+
+            // Get participants
+            const participants = await chatModel.getGroupParticipants(conversationId);
+
+            // Respond with participants
+            res.status(200).json({ participants });
+        } catch (err) {
+            // Pass errors to error handling middleware
+            next(err);
+        }
+    },
 };
 
 // Export the controller

@@ -148,17 +148,48 @@ interface ChatState {
 
 /**
  * Convert API conversation response to Contact type
+ * UPDATED: Now handles both direct messages and group chats
+ * 
+ * For direct messages:
+ * - Uses other user's name, username, avatar
+ * - conversationType is 'direct'
+ * 
+ * For group chats:
+ * - Uses group name and avatar
+ * - conversationType is 'group'
+ * - Includes participant count, description, creator ID
  */
 const convertConversationToContact = (conv: ConversationResponse): Contact => {
+    // Determine if this is a group or direct conversation
+    const isGroup = conv.conversation_type === 'group';
+
     return {
-        id: conv.other_user_id,
+        // ID field: for groups use conversation_id, for direct use other_user_id
+        id: isGroup ? conv.conversation_id : conv.other_user_id,
         conversationId: conv.conversation_id,
-        name: conv.other_display_name,
-        username: conv.other_username,
-        avatar: conv.other_avatar_url || '/default-avatar.png',
+        conversationType: conv.conversation_type as 'direct' | 'group',
+
+        // For direct messages: Use other user's info
+        // For groups: Use placeholder values (will be overridden by group fields)
+        name: isGroup ? (conv.group_name || 'Unnamed Group') : conv.other_display_name,
+        username: isGroup ? '' : conv.other_username,
+        avatar: isGroup
+            ? (conv.group_avatar || '/default-group-avatar.png')
+            : (conv.other_avatar_url || '/default-avatar.png'),
+
+        // Group-specific fields
+        groupName: conv.group_name,
+        groupAvatar: conv.group_avatar,
+        groupDescription: conv.group_description,
+        groupCreatorId: conv.group_creator_id,
+        participantCount: conv.participant_count,
+
+        // Common fields
         lastMessage: conv.last_message_content || '',
         timestamp: conv.last_message_time || conv.updated_at,
         unread: conv.unread_count,
+
+        // Online status (only meaningful for direct messages)
         online: false, // Will be updated via WebSocket
     };
 };

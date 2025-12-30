@@ -100,5 +100,47 @@ router.post('/conversations/:conversationId/read', chatController.markConversati
  */
 router.get('/unread-count', chatController.getTotalUnreadCount);
 
+// ========================================================================
+// GROUP CHAT ROUTES
+// ========================================================================
+
+/**
+ * POST /api/chat/groups
+ * Create a new group conversation
+ * Body: { name: string, description?: string, participantIds: number[], avatarUrl?: string }
+ * Returns: Created group conversation object
+ */
+router.post('/groups', chatController.createGroup);
+
+/**
+ * PATCH /api/chat/groups/:conversationId
+ * Update group details (name, description, avatar)
+ * Body: { name?: string, description?: string, avatarUrl?: string }
+ * Returns: Updated conversation object
+ */
+router.patch('/groups/:conversationId', chatController.updateGroupDetails);
+
+/**
+ * GET /api/chat/groups/:conversationId/participants
+ * Get all participants in a group
+ * Returns: Array of participant objects
+ */
+router.get('/groups/:conversationId/participants', chatController.getGroupMembers);
+
+/**
+ * POST /api/chat/groups/:conversationId/participants
+ * Add participants to a group
+ * Body: { userIds: number[] }
+ * Returns: Updated conversation object
+ */
+router.post('/groups/:conversationId/participants', chatController.addGroupMembers);
+
+/**
+ * DELETE /api/chat/groups/:conversationId/participants/:participantId
+ * Remove a participant from a group (or leave group)
+ * Returns: Success status
+ */
+router.delete('/groups/:conversationId/participants/:participantId', chatController.removeGroupMember);
+
 // Export router
 export default router;

@@ -19,23 +19,35 @@ const chatModel = {
      * Get all conversations for a user with last message preview
      * Returns: Array of conversations with participant info and last message
      * Used for: Loading user's conversation list in sidebar
+     * 
+     * UPDATED: Now supports both direct messages (1-on-1) and group chats
+     * - For direct messages: Shows other user's name and avatar
+     * - For groups: Shows group name, avatar, and participant count
      */
     getUserConversations: async (userId) => {
-        // Complex query that:
-        // 1. Gets all conversations where user is a participant
-        // 2. Joins with other participant (for direct messages)
-        // 3. Gets last message preview
-        // 4. Calculates unread count
         const queryText = `
             SELECT 
                 c.id AS conversation_id,
                 c.created_at,
                 c.updated_at,
-                -- Other user's info (for direct messages)
+                -- Conversation type and group data
+                c.conversation_type,
+                c.name AS group_name,
+                c.avatar_url AS group_avatar,
+                c.description AS group_description,
+                c.created_by AS group_creator_id,
+                -- For direct messages: Other user's info
+                -- For groups: This will be NULL (we'll use group name instead)
                 u.id AS other_user_id,
                 u.username AS other_username,
                 u.display_name AS other_display_name,
                 u.avatar_url AS other_avatar_url,
+                -- Participant count (useful for groups)
+                (
+                    SELECT COUNT(*)
+                    FROM conversation_participants
+                    WHERE conversation_id = c.id
+                ) AS participant_count,
                 -- Last message preview
                 lm.content AS last_message_content,
                 lm.message_type AS last_message_type,
@@ -57,11 +69,14 @@ const chatModel = {
             -- Join with current user's participation
             JOIN conversation_participants cp1 
                 ON c.id = cp1.conversation_id AND cp1.user_id = $1
-            -- Join with other participant (assumes direct message)
-            JOIN conversation_participants cp2 
-                ON c.id = cp2.conversation_id AND cp2.user_id != $1
-            -- Get other user's details
-            JOIN users u ON cp2.user_id = u.id
+            -- LEFT JOIN with other participant (only for direct messages)
+            -- For groups, this will be NULL as there are multiple participants
+            LEFT JOIN conversation_participants cp2 
+                ON c.id = cp2.conversation_id 
+                AND cp2.user_id != $1 
+                AND c.conversation_type = 'direct'
+            -- Get other user's details (only for direct messages)
+            LEFT JOIN users u ON cp2.user_id = u.id
             -- Get last message (LATERAL join for correlated subquery)
             LEFT JOIN LATERAL (
                 SELECT content, message_type, created_at, sender_id
@@ -86,19 +101,25 @@ const chatModel = {
     },
 
     /**
-     * Get or create a conversation between two users
+     * Get or create a conversation between two users (DIRECT MESSAGE)
      * Returns: Conversation ID (existing or newly created)
      * Used for: Starting a new chat or retrieving existing one
+     * 
+     * NOTE: This method is specifically for direct messages (1-on-1)
+     * For group chats, use createGroupConversation() method
      */
     getOrCreateConversation: async (userId1, userId2) => {
         try {
-            // First, try to find existing conversation between these two users
+            // First, try to find existing direct conversation between these two users
             const findQueryText = `
                 SELECT cp1.conversation_id
                 FROM conversation_participants cp1
                 JOIN conversation_participants cp2 
                     ON cp1.conversation_id = cp2.conversation_id
-                WHERE cp1.user_id = $1 AND cp2.user_id = $2
+                JOIN conversations c ON cp1.conversation_id = c.id
+                WHERE cp1.user_id = $1 
+                AND cp2.user_id = $2
+                AND c.conversation_type = 'direct'
                 LIMIT 1
             `;
             const findQueryParams = [userId1, userId2];
@@ -106,19 +127,21 @@ const chatModel = {
 
             // If conversation exists, return its ID
             if (findRes.rows.length > 0) {
+                console.log(`[+] Found existing direct conversation`);
                 return findRes.rows[0].conversation_id;
             }
 
-            // If not found, create new conversation
-            // Use transaction to ensure both inserts succeed or fail together
+            // If not found, create new direct conversation
+            // Use transaction to ensure all inserts succeed or fail together
             await query('BEGIN');
 
-            // Create conversation
+            // Create conversation with type 'direct' and creator
             const createConvQueryText = `
-                INSERT INTO conversations DEFAULT VALUES 
+                INSERT INTO conversations (conversation_type, created_by) 
+                VALUES ('direct', $1)
                 RETURNING id
             `;
-            const convRes = await query(createConvQueryText);
+            const convRes = await query(createConvQueryText, [userId1]);
             const conversationId = convRes.rows[0].id;
 
             // Add both participants
@@ -131,12 +154,230 @@ const chatModel = {
 
             // Commit transaction
             await query('COMMIT');
+            console.log(`[+] Created new direct conversation: ${conversationId}`);
 
             return conversationId;
         } catch (err) {
             // Rollback on error
             await query('ROLLBACK');
             console.error(`[-] Error getting/creating conversation: ${err.message}`);
+            throw err;
+        }
+    },
+
+    /**
+     * CREATE A NEW GROUP CONVERSATION
+     * Creates a group chat with a name, optional description, and initial participants
+     * 
+     * @param {number} creatorId - User ID of the group creator
+     * @param {string} groupName - Name of the group (required)
+     * @param {Array<number>} participantIds - Array of user IDs to add (including creator)
+     * @param {string} description - Optional group description
+     * @param {string} avatarUrl - Optional group avatar URL
+     * @returns {number} - Created conversation ID
+     * 
+     * Used for: Creating new group chats from UI
+     */
+    createGroupConversation: async (creatorId, groupName, participantIds, description = null, avatarUrl = null) => {
+        try {
+            // Validate inputs
+            if (!groupName || groupName.trim().length === 0) {
+                throw new Error('Group name is required');
+            }
+            if (!participantIds || participantIds.length < 2) {
+                throw new Error('At least 2 participants required for a group');
+            }
+
+            // Start transaction
+            await query('BEGIN');
+
+            // Create group conversation
+            const createGroupQueryText = `
+                INSERT INTO conversations (
+                    conversation_type, 
+                    name, 
+                    description, 
+                    avatar_url, 
+                    created_by
+                ) 
+                VALUES ('group', $1, $2, $3, $4)
+                RETURNING id
+            `;
+            const createGroupParams = [groupName, description, avatarUrl, creatorId];
+            const groupRes = await query(createGroupQueryText, createGroupParams);
+            const conversationId = groupRes.rows[0].id;
+
+            // Add all participants (including creator)
+            // Build VALUES clause dynamically: ($1, $2), ($1, $3), ($1, $4), ...
+            const participantValues = participantIds.map((_, index) => 
+                `($1, $${index + 2})`
+            ).join(', ');
+            
+            const addParticipantsQueryText = `
+                INSERT INTO conversation_participants (conversation_id, user_id)
+                VALUES ${participantValues}
+            `;
+            const addParticipantsParams = [conversationId, ...participantIds];
+            await query(addParticipantsQueryText, addParticipantsParams);
+
+            // Commit transaction
+            await query('COMMIT');
+            console.log(`[+] Created new group conversation: ${conversationId} with ${participantIds.length} participants`);
+
+            return conversationId;
+        } catch (err) {
+            // Rollback on error
+            await query('ROLLBACK');
+            console.error(`[-] Error creating group conversation: ${err.message}`);
+            throw err;
+        }
+    },
+
+    /**
+     * ADD PARTICIPANTS TO A GROUP
+     * Adds new members to an existing group conversation
+     * 
+     * @param {number} conversationId - Group conversation ID
+     * @param {Array<number>} userIds - Array of user IDs to add
+     * @returns {boolean} - Success status
+     * 
+     * Used for: Adding members to groups
+     * NOTE: Should validate that conversation is a group and user has permission
+     */
+    addGroupParticipants: async (conversationId, userIds) => {
+        try {
+            // Build VALUES clause dynamically
+            const participantValues = userIds.map((_, index) => 
+                `($1, $${index + 2})`
+            ).join(', ');
+            
+            const queryText = `
+                INSERT INTO conversation_participants (conversation_id, user_id)
+                VALUES ${participantValues}
+                ON CONFLICT (conversation_id, user_id) DO NOTHING
+            `;
+            const queryParams = [conversationId, ...userIds];
+            
+            await query(queryText, queryParams);
+            console.log(`[+] Added ${userIds.length} participants to conversation ${conversationId}`);
+            return true;
+        } catch (err) {
+            console.error(`[-] Error adding group participants: ${err.message}`);
+            throw err;
+        }
+    },
+
+    /**
+     * REMOVE PARTICIPANT FROM GROUP
+     * Removes a member from a group conversation
+     * 
+     * @param {number} conversationId - Group conversation ID
+     * @param {number} userId - User ID to remove
+     * @returns {boolean} - Success status
+     * 
+     * Used for: Removing members or leaving groups
+     */
+    removeGroupParticipant: async (conversationId, userId) => {
+        try {
+            const queryText = `
+                DELETE FROM conversation_participants
+                WHERE conversation_id = $1 AND user_id = $2
+            `;
+            const queryParams = [conversationId, userId];
+            
+            const res = await query(queryText, queryParams);
+            console.log(`[+] Removed user ${userId} from conversation ${conversationId}`);
+            return res.rowCount > 0;
+        } catch (err) {
+            console.error(`[-] Error removing group participant: ${err.message}`);
+            throw err;
+        }
+    },
+
+    /**
+     * UPDATE GROUP DETAILS
+     * Updates group name, description, or avatar
+     * 
+     * @param {number} conversationId - Group conversation ID
+     * @param {object} updates - Object with name, description, and/or avatarUrl
+     * @returns {boolean} - Success status
+     * 
+     * Used for: Editing group information
+     */
+    updateGroupDetails: async (conversationId, updates) => {
+        try {
+            // Build SET clause dynamically based on provided updates
+            const setClauses = [];
+            const queryParams = [conversationId];
+            let paramIndex = 2;
+
+            if (updates.name !== undefined) {
+                setClauses.push(`name = $${paramIndex}`);
+                queryParams.push(updates.name);
+                paramIndex++;
+            }
+            if (updates.description !== undefined) {
+                setClauses.push(`description = $${paramIndex}`);
+                queryParams.push(updates.description);
+                paramIndex++;
+            }
+            if (updates.avatarUrl !== undefined) {
+                setClauses.push(`avatar_url = $${paramIndex}`);
+                queryParams.push(updates.avatarUrl);
+                paramIndex++;
+            }
+
+            // If no updates provided, return false
+            if (setClauses.length === 0) {
+                return false;
+            }
+
+            const queryText = `
+                UPDATE conversations
+                SET ${setClauses.join(', ')}
+                WHERE id = $1 AND conversation_type = 'group'
+            `;
+            
+            const res = await query(queryText, queryParams);
+            console.log(`[+] Updated group ${conversationId} details`);
+            return res.rowCount > 0;
+        } catch (err) {
+            console.error(`[-] Error updating group details: ${err.message}`);
+            throw err;
+        }
+    },
+
+    /**
+     * GET GROUP PARTICIPANTS
+     * Fetches all participants in a group with their details
+     * 
+     * @param {number} conversationId - Group conversation ID
+     * @returns {Array} - Array of participant objects with user info
+     * 
+     * Used for: Displaying group member list
+     */
+    getGroupParticipants: async (conversationId) => {
+        try {
+            const queryText = `
+                SELECT 
+                    u.id,
+                    u.username,
+                    u.display_name,
+                    u.avatar_url,
+                    cp.joined_at,
+                    c.created_by = u.id AS is_admin
+                FROM conversation_participants cp
+                JOIN users u ON cp.user_id = u.id
+                JOIN conversations c ON cp.conversation_id = c.id
+                WHERE cp.conversation_id = $1
+                ORDER BY is_admin DESC, cp.joined_at ASC
+            `;
+            const queryParams = [conversationId];
+            
+            const res = await query(queryText, queryParams);
+            return res.rows;
+        } catch (err) {
+            console.error(`[-] Error getting group participants: ${err.message}`);
             throw err;
         }
     },
@@ -164,8 +405,10 @@ const chatModel = {
 
     /**
      * Get conversation details with participants
-     * Returns: Conversation object with participant array
+     * Returns: Conversation object with participant array and group info
      * Used for: Loading conversation header info
+     * 
+     * UPDATED: Now includes group details (name, avatar, description, creator)
      */
     getConversationDetails: async (conversationId) => {
         const queryText = `
@@ -173,13 +416,22 @@ const chatModel = {
                 c.id,
                 c.created_at,
                 c.updated_at,
+                -- Group information (NULL for direct messages)
+                c.conversation_type,
+                c.name,
+                c.avatar_url,
+                c.description,
+                c.created_by,
+                -- Participants array with user details
                 json_agg(
                     json_build_object(
                         'user_id', u.id,
                         'username', u.username,
                         'display_name', u.display_name,
-                        'avatar_url', u.avatar_url
-                    )
+                        'avatar_url', u.avatar_url,
+                        'joined_at', cp.joined_at,
+                        'is_admin', c.created_by = u.id
+                    ) ORDER BY cp.joined_at
                 ) AS participants
             FROM conversations c
             JOIN conversation_participants cp ON c.id = cp.conversation_id

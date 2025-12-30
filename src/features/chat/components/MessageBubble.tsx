@@ -1,11 +1,16 @@
-// Message Bubble Component
+// ============================================================================
+// MESSAGE BUBBLE COMPONENT
+// ============================================================================
 // Displays individual chat message with sender info and timestamp
 // Handles both sent (right-aligned) and received (left-aligned) messages
+// Properly aligns messages based on sender ID vs current user ID
+// ============================================================================
 
 import { Message } from '@/types/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns/format';
+import useAuthStore from '@/store/useAuthStore';
 
 interface MessageBubbleProps {
     message: Message;
@@ -16,6 +21,9 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message, showAvatar = true, isGrouped = false }: MessageBubbleProps) {
+    // Get current user from auth store to determine message alignment
+    const { user } = useAuthStore();
+
     // Get initials from sender name for avatar fallback
     const getInitials = (name: string) => {
         return name
@@ -28,9 +36,11 @@ export function MessageBubble({ message, showAvatar = true, isGrouped = false }:
     // Format timestamp to show time (e.g., "2:30 PM")
     const formattedTime = format(new Date(message.timestamp), 'p');
 
-    // Determine if message is sent by current user (will be enhanced with actual user ID check)
-    // For now, check if sender name is "You" or compare sender ID with current user
-    const isSent = message.senderName === 'You';
+    // **FIX**: Determine if message is sent by current user
+    // Compare sender ID with current user ID (not sender name)
+    // Messages sent by current user appear on the right (orange)
+    // Messages from other users appear on the left (gray)
+    const isSent = user?.id ? message.senderId === parseInt(user.id) : false;
 
     return (
         <div
