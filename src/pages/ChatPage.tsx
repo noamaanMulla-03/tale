@@ -310,17 +310,11 @@ function ChatPage() {
             // Refresh conversations list to include the new/existing conversation
             await fetchConversations();
 
-            // Switch to the conversation
-            // Find the conversation in the updated list
-            const newContact = conversations.find(
-                conv => conv.conversationId === conversation.id
-            );
+            // Switch to the conversation using the ID from the API response
+            setSelectedConversation(conversation.id);
 
-            if (newContact) {
-                setSelectedConversation(conversation.id);
-                // Fetch messages for this conversation
-                await fetchMessages(conversation.id);
-            }
+            // Fetch messages for this conversation
+            await fetchMessages(conversation.id);
 
             // Exit search mode and clear search
             setIsSearchingUsers(false);
@@ -407,8 +401,8 @@ function ChatPage() {
                         <Button
                             onClick={handleToggleUserSearch}
                             className={`flex-1 ${isSearchingUsers
-                                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                                    : 'bg-white/5 hover:bg-white/10 text-gray-400'
+                                ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                                : 'bg-white/5 hover:bg-white/10 text-gray-400'
                                 }`}
                             size="sm"
                         >

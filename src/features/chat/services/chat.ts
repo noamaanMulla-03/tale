@@ -116,17 +116,21 @@ const getUserConversations = async (): Promise<ConversationResponse[]> => {
  */
 const createOrGetConversation = async (otherUserId: number): Promise<ConversationDetails> => {
     try {
+        console.log(`[DEBUG] About to create conversation with user ${otherUserId}`);
+
         // POST request to /api/chat/conversations
         const response = await api.post('/api/chat/conversations', { otherUserId });
 
         // Log the response
-        console.log(`[+] Created/retrieved conversation with user ${otherUserId}`);
+        console.log(`[+] Created/retrieved conversation with user ${otherUserId}`, response.data);
 
         // Return conversation object
         return response.data.conversation;
-    } catch (error) {
-        // Log the error
+    } catch (error: any) {
+        // Log the error with more details
         console.error('[!] Error creating conversation:', error);
+        console.error('[!] Error response:', error.response?.data);
+        console.error('[!] Error status:', error.response?.status);
         throw error;
     }
 };

@@ -56,8 +56,8 @@ export const searchUsers = async (searchQuery: string): Promise<UserSearchRespon
             throw new Error('Search query must be at least 2 characters');
         }
 
-        // GET request to /users/search with query parameter
-        const response = await api.get('/users/search', {
+        // GET request to /auth/users/search with query parameter
+        const response = await api.get('/auth/users/search', {
             params: { q: searchQuery.trim() }
         });
 
