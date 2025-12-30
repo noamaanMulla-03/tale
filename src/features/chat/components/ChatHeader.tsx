@@ -29,7 +29,7 @@ export function ChatHeader({ contact }: ChatHeaderProps) {
 
     // Get status text based on contact status
     const getStatusText = () => {
-        if (contact.isOnline) {
+        if (contact.online) {
             return 'Active now';
         }
         return 'Offline';
@@ -37,16 +37,7 @@ export function ChatHeader({ contact }: ChatHeaderProps) {
 
     // Get status color based on contact status
     const getStatusColor = () => {
-        switch (contact.status) {
-            case 'online':
-                return 'text-green-500';
-            case 'away':
-                return 'text-yellow-500';
-            case 'busy':
-                return 'text-red-500';
-            default:
-                return 'text-gray-500';
-        }
+        return contact.online ? 'text-green-500' : 'text-gray-500';
     };
 
     return (
@@ -63,7 +54,7 @@ export function ChatHeader({ contact }: ChatHeaderProps) {
                     </Avatar>
 
                     {/* Online status indicator dot */}
-                    {contact.isOnline && (
+                    {contact.online && (
                         <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#2a2a2a] rounded-full" />
                     )}
                 </div>

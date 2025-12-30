@@ -24,7 +24,7 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
     };
 
     // Format the timestamp to relative time (e.g., "5 minutes ago")
-    const formattedTime = formatDistanceToNow(contact.lastMessageTime, { addSuffix: false });
+    const formattedTime = formatDistanceToNow(new Date(contact.timestamp), { addSuffix: false });
 
     return (
         <div
@@ -43,7 +43,7 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
             )}
         >
             {/* Avatar with online status indicator */}
-            <div className="relative flex-shrink-0">
+            <div className="relative shrink-0">
                 <Avatar className="h-12 w-12 border-2 border-white/10">
                     <AvatarImage src={contact.avatar} alt={contact.name} />
                     <AvatarFallback className="bg-orange-500/20 text-orange-500 font-semibold">
@@ -52,7 +52,7 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
                 </Avatar>
 
                 {/* Online status dot */}
-                {contact.isOnline && (
+                {contact.online && (
                     <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#2a2a2a] rounded-full" />
                 )}
             </div>
@@ -64,7 +64,7 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
                     <h3 className="text-white font-semibold text-sm truncate">
                         {contact.name}
                     </h3>
-                    <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                    <span className="text-xs text-gray-500 shrink-0 ml-2">
                         {formattedTime}
                     </span>
                 </div>
@@ -76,11 +76,11 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
                     </p>
 
                     {/* Unread message count badge */}
-                    {contact.unreadCount > 0 && (
+                    {contact.unread > 0 && (
                         <Badge
-                            className="ml-2 bg-orange-500 hover:bg-orange-600 text-white text-xs px-2 py-0.5 min-w-[20px] justify-center"
+                            className="ml-2 bg-orange-500 hover:bg-orange-600 text-white text-xs px-2 py-0.5 min-w-5 justify-center"
                         >
-                            {contact.unreadCount}
+                            {contact.unread}
                         </Badge>
                     )}
                 </div>

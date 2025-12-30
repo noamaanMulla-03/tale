@@ -1,34 +1,71 @@
+// ============================================================================
+// CHAT TYPE DEFINITIONS
+// ============================================================================
 // Type definitions for chat functionality
+// Updated to match backend API responses and database schema
+// ============================================================================
 
-// Interface for a chat message
+/**
+ * Message type - represents a single chat message
+ * Maps to messages table in database
+ */
 export interface Message {
-    id: string;
-    senderId: string;
+    // Message ID from database
+    id: number;
+
+    // Sender information
+    senderId: number;
     senderName: string;
-    senderAvatar?: string;
+    senderAvatar: string;
+
+    // Message content and metadata
     content: string;
-    timestamp: Date;
-    isRead: boolean;
-    // For distinguishing sent vs received messages
-    isSent: boolean;
+    timestamp: string; // ISO date string
+    read: boolean;
+
+    // Message type (text, image, file, voice)
+    type: 'text' | 'image' | 'file' | 'voice';
+
+    // File attachment data (for non-text messages)
+    fileUrl?: string | null;
+    fileName?: string | null;
+
+    // Edit tracking
+    isEdited?: boolean;
 }
 
-// Interface for a contact/conversation
+/**
+ * Contact type - represents a conversation in the sidebar
+ * Contains other participant info and last message preview
+ */
 export interface Contact {
-    id: string;
+    // Other user's ID
+    id: number;
+
+    // Conversation ID for API calls
+    conversationId: number;
+
+    // Other user's information
     name: string;
     username: string;
-    avatar?: string;
+    avatar: string;
+
+    // Last message preview
     lastMessage: string;
-    lastMessageTime: Date;
-    unreadCount: number;
-    isOnline: boolean;
-    // User's status - online, away, busy, offline
-    status: 'online' | 'away' | 'busy' | 'offline';
+    timestamp: string; // ISO date string
+
+    // Unread count
+    unread: number;
+
+    // Online status (updated via WebSocket)
+    online: boolean;
 }
 
-// Interface for typing indicator
+/**
+ * Typing indicator - tracks who is currently typing
+ */
 export interface TypingIndicator {
-    contactId: string;
-    isTyping: boolean;
+    userId: number;
+    username: string;
+    conversationId: number;
 }

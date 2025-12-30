@@ -3,7 +3,6 @@
 // Uses static mock data for development
 
 import { useState, useRef, useEffect } from 'react';
-import { mockContacts, mockMessages } from '@/data/mockChatData';
 import { Contact, Message } from '@/types/chat';
 import { ContactItem } from '@/features/chat/components/ContactItem';
 import { ChatHeader } from '@/features/chat/components/ChatHeader';
@@ -12,7 +11,7 @@ import { MessageInput } from '@/features/chat/components/MessageInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Menu, LogOut, Settings, User } from 'lucide-react';
+import { Search, LogOut, Settings, User } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -30,13 +29,13 @@ function ChatPage() {
     const navigate = useNavigate();
 
     // State for selected contact (currently active chat)
-    const [selectedContact, setSelectedContact] = useState<Contact | null>(mockContacts[0]);
+    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     // State for all contacts list
-    const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+    const [contacts, setContacts] = useState<Contact[]>([]);
     // State for search query in contacts
     const [searchQuery, setSearchQuery] = useState('');
     // State for messages of the selected contact
-    const [messages, setMessages] = useState<Message[]>(mockMessages['1'] || []);
+    const [messages, setMessages] = useState<Message[]>([]);
     // Ref for auto-scrolling to bottom of messages
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -53,12 +52,15 @@ function ChatPage() {
     // Handle contact selection from sidebar
     const handleContactSelect = (contact: Contact) => {
         setSelectedContact(contact);
-        // Load messages for the selected contact
-        setMessages(mockMessages[contact.id] || []);
+        // Clear messages and load from backend
+        setMessages([]);
+        // TODO: Fetch messages from backend using useChatStore
+        // chatStore.fetchMessages(contact.conversationId);
+
         // Mark messages as read when opening chat
         setContacts(prevContacts =>
             prevContacts.map(c =>
-                c.id === contact.id ? { ...c, unreadCount: 0 } : c
+                c.id === contact.id ? { ...c, unread: 0 } : c
             )
         );
     };
@@ -67,15 +69,16 @@ function ChatPage() {
     const handleSendMessage = (content: string) => {
         if (!selectedContact) return;
 
-        // Create new message object
+        // Create new message object (temporary until backend integration)
         const newMessage: Message = {
-            id: `m${Date.now()}`,
-            senderId: 'me',
-            senderName: 'You',
+            id: Date.now(),
+            senderId: parseInt(user?.id || '0'), // Convert string ID to number
+            senderName: user?.username || 'You',
+            senderAvatar: user?.avatarUrl || '/default-avatar.png',
             content,
-            timestamp: new Date(),
-            isRead: false,
-            isSent: true
+            timestamp: new Date().toISOString(),
+            read: false,
+            type: 'text'
         };
 
         // Add message to current conversation
@@ -85,7 +88,7 @@ function ChatPage() {
         setContacts(prevContacts =>
             prevContacts.map(c =>
                 c.id === selectedContact.id
-                    ? { ...c, lastMessage: content, lastMessageTime: new Date() }
+                    ? { ...c, lastMessage: content, timestamp: new Date().toISOString() }
                     : c
             )
         );
