@@ -1,9 +1,9 @@
 // Main Chat Page Component
 // Implements the complete chat interface with contacts sidebar and chat area
-// Uses static mock data for development
+// Fully integrated with backend API and WebSocket for real-time features
 
 import { useState, useRef, useEffect } from 'react';
-import { Contact, Message } from '@/types/chat';
+import { Contact } from '@/types/chat';
 import { ContactItem } from '@/features/chat/components/ContactItem';
 import { ChatHeader } from '@/features/chat/components/ChatHeader';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, LogOut, Settings, User } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
+import useChatStore from '@/store/useChatStore';
 import { useNavigate } from 'react-router-dom';
 import API_URL from '@/config';
 import {
@@ -23,11 +24,48 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+    connectSocket,
+    disconnectSocket,
+    joinConversation,
+    leaveConversation,
+    onNewMessage,
+    onMessageEdited,
+    onMessageDeleted,
+    onUserTyping,
+    onUserStopTyping,
+    onUserOnline,
+    onUserOffline,
+    emitTyping,
+    emitStopTyping,
+} from '@/lib/socket';
 
 function ChatPage() {
     // Get user info and logout function from auth store
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
+
+    // Get chat store state and actions
+    const {
+        conversations,
+        messages: allMessages,
+        selectedConversationId,
+        isLoadingConversations,
+        isLoadingMessages,
+        fetchConversations,
+        fetchMessages,
+        sendMessage,
+        setSelectedConversation,
+        addMessage,
+        updateMessage,
+        removeMessage,
+        addTypingUser,
+        removeTypingUser,
+        getTypingUsers,
+        setUserOnline,
+        setUserOffline,
+        clearChatData,
+    } = useChatStore();
 
     // Get user initials for avatar fallback
     const getUserInitials = () => {
@@ -44,16 +82,101 @@ function ChatPage() {
         return `${API_URL}${user.avatarUrl}`;
     };
 
-    // State for selected contact (currently active chat)
-    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-    // State for all contacts list
-    const [contacts, setContacts] = useState<Contact[]>([]);
-    // State for search query in contacts
+    // Local state for search query
     const [searchQuery, setSearchQuery] = useState('');
-    // State for messages of the selected contact
-    const [messages, setMessages] = useState<Message[]>([]);
     // Ref for auto-scrolling to bottom of messages
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Get selected contact from conversations
+    const selectedContact = conversations.find(
+        conv => conv.conversationId === selectedConversationId
+    ) || null;
+
+    // Get messages for selected conversation
+    const messages = selectedConversationId ? allMessages[selectedConversationId] || [] : [];
+
+    // Initialize: Connect WebSocket and fetch conversations on mount
+    useEffect(() => {
+        if (!user?.id) return;
+
+        // Connect WebSocket
+        connectSocket(parseInt(user.id));
+
+        // Fetch conversations from backend
+        fetchConversations().catch(err => {
+            console.error('Failed to load conversations:', err);
+        });
+
+        // Cleanup on unmount (but don't disconnect - we handle that on logout)
+        return () => {
+            // Leave any active conversation
+            if (selectedConversationId) {
+                leaveConversation(selectedConversationId);
+            }
+        };
+    }, [user?.id]); // Only run once on mount
+
+    // Setup WebSocket event listeners
+    useEffect(() => {
+        if (!user?.id) return;
+
+        // Listen for new messages
+        const cleanupNewMessage = onNewMessage(({ conversationId, message }) => {
+            addMessage(conversationId, message);
+        });
+
+        // Listen for message edits
+        const cleanupMessageEdited = onMessageEdited(({ conversationId, message }) => {
+            updateMessage(conversationId, message.id, message);
+        });
+
+        // Listen for message deletions
+        const cleanupMessageDeleted = onMessageDeleted(({ conversationId, messageId }) => {
+            removeMessage(conversationId, messageId);
+        });
+
+        // Listen for typing indicators
+        const cleanupUserTyping = onUserTyping(({ conversationId, username, userId }) => {
+            addTypingUser(userId, username, conversationId);
+        });
+
+        const cleanupUserStopTyping = onUserStopTyping(({ conversationId, userId }) => {
+            removeTypingUser(userId, conversationId);
+        });
+
+        // Listen for online/offline status
+        const cleanupUserOnline = onUserOnline(({ userId }) => {
+            setUserOnline(userId);
+        });
+
+        const cleanupUserOffline = onUserOffline(({ userId }) => {
+            setUserOffline(userId);
+        });
+
+        // Cleanup all listeners on unmount
+        return () => {
+            cleanupNewMessage();
+            cleanupMessageEdited();
+            cleanupMessageDeleted();
+            cleanupUserTyping();
+            cleanupUserStopTyping();
+            cleanupUserOnline();
+            cleanupUserOffline();
+        };
+    }, [user?.id, addMessage, updateMessage, removeMessage, addTypingUser, removeTypingUser, setUserOnline, setUserOffline]);
+
+    // Join/leave conversation rooms when selection changes
+    useEffect(() => {
+        if (!selectedConversationId) return;
+
+        // Join the conversation room
+        joinConversation(selectedConversationId);
+
+        // Cleanup: leave room when switching conversations or unmounting
+        return () => {
+            leaveConversation(selectedConversationId);
+        };
+    }, [selectedConversationId]);
 
     // Auto-scroll to bottom when messages change
     useEffect(() => {
@@ -67,62 +190,64 @@ function ChatPage() {
 
     // Handle contact selection from sidebar
     const handleContactSelect = (contact: Contact) => {
-        setSelectedContact(contact);
-        // Clear messages and load from backend
-        setMessages([]);
-        // TODO: Fetch messages from backend using useChatStore
-        // chatStore.fetchMessages(contact.conversationId);
+        // Set selected conversation in store
+        setSelectedConversation(contact.conversationId);
 
-        // Mark messages as read when opening chat
-        setContacts(prevContacts =>
-            prevContacts.map(c =>
-                c.id === contact.id ? { ...c, unread: 0 } : c
-            )
-        );
+        // Fetch messages from backend if not already loaded
+        if (!allMessages[contact.conversationId]) {
+            fetchMessages(contact.conversationId).catch(err => {
+                console.error('Failed to load messages:', err);
+            });
+        }
     };
 
     // Handle sending a new message
-    const handleSendMessage = (content: string) => {
-        if (!selectedContact) return;
+    const handleSendMessage = async (content: string) => {
+        if (!selectedContact || !selectedConversationId) return;
 
-        // Create new message object (temporary until backend integration)
-        const newMessage: Message = {
-            id: Date.now(),
-            senderId: parseInt(user?.id || '0'), // Convert string ID to number
-            senderName: user?.username || 'You',
-            senderAvatar: getAvatarUrl() || '/default-avatar.png',
-            content,
-            timestamp: new Date().toISOString(),
-            read: false,
-            type: 'text'
-        };
-
-        // Add message to current conversation
-        setMessages(prev => [...prev, newMessage]);
-
-        // Update last message in contacts list
-        setContacts(prevContacts =>
-            prevContacts.map(c =>
-                c.id === selectedContact.id
-                    ? { ...c, lastMessage: content, timestamp: new Date().toISOString() }
-                    : c
-            )
-        );
-
-        // TODO: Send message to backend via WebSocket or API
+        try {
+            // Send message via chat store (which calls API and updates state)
+            await sendMessage(selectedConversationId, {
+                content,
+                messageType: 'text',
+            });
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            // TODO: Show error notification to user
+        }
     };
 
     // Filter contacts based on search query
-    const filteredContacts = contacts.filter(contact =>
+    const filteredContacts = conversations.filter(contact =>
         contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         contact.username.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     // Handle logout
     const handleLogout = () => {
+        // Disconnect WebSocket
+        disconnectSocket();
+        // Clear chat data
+        clearChatData();
+        // Logout from auth store
         logout();
         navigate('/login');
     };
+
+    // Handle typing indicator (emit to other users)
+    const handleTyping = (conversationId: number, username: string) => {
+        emitTyping(conversationId, username);
+    };
+
+    // Handle stop typing indicator
+    const handleStopTyping = (conversationId: number) => {
+        emitStopTyping(conversationId);
+    };
+
+    // Get typing users for current conversation
+    const typingUsersInConversation = selectedConversationId
+        ? getTypingUsers(selectedConversationId)
+        : [];
 
     // Check if consecutive messages are from the same sender for grouping
     const shouldShowAvatar = (index: number) => {
@@ -252,13 +377,36 @@ function ChatPage() {
                                         <p className="text-sm">No messages yet. Start the conversation!</p>
                                     </div>
                                 )}
+
+                                {/* Typing indicator */}
+                                {typingUsersInConversation.length > 0 && (
+                                    <div className="flex items-center gap-2 px-4 py-2 text-gray-400 text-sm">
+                                        <div className="flex gap-1">
+                                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                        </div>
+                                        <span>
+                                            {typingUsersInConversation.length === 1
+                                                ? `${typingUsersInConversation[0].username} is typing...`
+                                                : `${typingUsersInConversation.length} people are typing...`}
+                                        </span>
+                                    </div>
+                                )}
+
                                 {/* Auto-scroll anchor */}
                                 <div ref={messagesEndRef} />
                             </div>
                         </ScrollArea>
 
                         {/* Message input */}
-                        <MessageInput onSendMessage={handleSendMessage} />
+                        <MessageInput
+                            onSendMessage={handleSendMessage}
+                            conversationId={selectedConversationId ?? undefined}
+                            username={user?.username}
+                            onTyping={handleTyping}
+                            onStopTyping={handleStopTyping}
+                        />
                     </>
                 ) : (
                     // No contact selected - show welcome message

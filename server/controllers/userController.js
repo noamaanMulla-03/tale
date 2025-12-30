@@ -204,8 +204,12 @@ const userController = {
             // 2. Handle avatar upload if file is provided
             let avatarUrl = null;
             if (avatarFile) {
-                // TODO: Upload to cloud storage (S3, Cloudinary, etc.)
-                // For now, save file path or use a placeholder
+                // NOTE: Currently saving files locally to /uploads/avatars/
+                // For production deployment, integrate cloud storage service:
+                // - AWS S3: Use AWS SDK with S3.putObject() to upload files
+                // - Cloudinary: Use cloudinary.uploader.upload() for image optimization
+                // - Firebase Storage: Use firebase-admin storage bucket
+                // Benefits: CDN delivery, automatic backups, unlimited scaling
                 avatarUrl = `/uploads/avatars/${avatarFile.filename}`;
                 await userModel.updateUserAvatar(userId, avatarUrl);
             }

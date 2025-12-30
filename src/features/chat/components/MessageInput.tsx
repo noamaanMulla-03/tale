@@ -1,7 +1,7 @@
 // Message Input Component
-// Text input area for composing and sending messages with additional features
+// Text input area for composing and sending messages with typing indicators
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Smile, Paperclip, Mic } from 'lucide-react';
@@ -10,13 +10,26 @@ import { cn } from '@/lib/utils';
 interface MessageInputProps {
     onSendMessage: (message: string) => void;
     placeholder?: string;
+    conversationId?: number;
+    username?: string;
+    onTyping?: (conversationId: number, username: string) => void;
+    onStopTyping?: (conversationId: number) => void;
 }
 
-export function MessageInput({ onSendMessage, placeholder = "Type a message..." }: MessageInputProps) {
+export function MessageInput({
+    onSendMessage,
+    placeholder = "Type a message...",
+    conversationId,
+    username,
+    onTyping,
+    onStopTyping
+}: MessageInputProps) {
     // State for the message text
     const [message, setMessage] = useState('');
-    // State for typing indicator (not implemented yet)
+    // State for typing indicator
     const [isTyping, setIsTyping] = useState(false);
+    // Timer ref for typing indicator
+    const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Handle send message
     const handleSend = () => {
@@ -25,6 +38,11 @@ export function MessageInput({ onSendMessage, placeholder = "Type a message..." 
             onSendMessage(message.trim());
             // Clear the input after sending
             setMessage('');
+            // Stop typing indicator
+            if (isTyping && conversationId && onStopTyping) {
+                setIsTyping(false);
+                onStopTyping(conversationId);
+            }
         }
     };
 
@@ -40,11 +58,44 @@ export function MessageInput({ onSendMessage, placeholder = "Type a message..." 
     // Handle input change
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setMessage(e.target.value);
-        // TODO: Trigger typing indicator to other user
-        if (!isTyping && e.target.value) {
-            setIsTyping(true);
+
+        // Trigger typing indicator
+        if (conversationId && username && onTyping && onStopTyping) {
+            if (!isTyping && e.target.value) {
+                // User started typing
+                setIsTyping(true);
+                onTyping(conversationId, username);
+            }
+
+            // Clear existing timer
+            if (typingTimerRef.current) {
+                clearTimeout(typingTimerRef.current);
+            }
+
+            // Set new timer to stop typing after 3 seconds of inactivity
+            if (e.target.value) {
+                typingTimerRef.current = setTimeout(() => {
+                    setIsTyping(false);
+                    onStopTyping(conversationId);
+                }, 3000);
+            } else {
+                // If input is empty, stop typing immediately
+                if (isTyping) {
+                    setIsTyping(false);
+                    onStopTyping(conversationId);
+                }
+            }
         }
     };
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (typingTimerRef.current) {
+                clearTimeout(typingTimerRef.current);
+            }
+        };
+    }, []);
 
     return (
         <div className="p-4 border-t border-white/10 bg-[#2a2a2a]/95 backdrop-blur-xl">
