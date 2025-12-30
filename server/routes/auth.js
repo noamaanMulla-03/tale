@@ -24,5 +24,8 @@ router.post('/verify-otp', userController.verifyOTP);
 // profile setup route (protected, with file upload)
 router.post('/profile-setup', authenticateToken, upload.single('avatar'), userController.setupUserProfile);
 
+// get user profile route (protected)
+router.get('/profile', authenticateToken, userController.getUserProfileData);
+
 // export router
 export default router;

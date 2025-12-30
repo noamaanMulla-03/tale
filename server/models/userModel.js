@@ -24,7 +24,7 @@ const userModel = {
     // find user by email
     findUserByEmail: async (email) => {
         // create query text and parameters
-        const queryText = "SELECT id, username, email, password_hash, email_verified FROM users WHERE email = $1";
+        const queryText = "SELECT id, username, email, password_hash, email_verified, avatar_url, display_name FROM users WHERE email = $1";
         const queryParams = [email];
         try {
             // execute the query

@@ -69,10 +69,12 @@ const userController = {
             const profileCompleted = !!profile?.profile_completed_at;
 
             // destructure user data to exclude password_hash
+            // Map snake_case DB fields to camelCase for frontend
             const userData = { 
                 id: user.id, 
                 username: user.username, 
                 email: user.email,
+                avatarUrl: user.avatar_url, // Map snake_case to camelCase
                 profileCompleted 
             };
             // generate a jwt token
@@ -215,11 +217,59 @@ const userController = {
             // 4. Get complete profile to return
             const completeProfile = await userModel.getUserProfile(userId);
 
+            // Map snake_case DB fields to camelCase for frontend
+            const profileResponse = {
+                ...completeProfile,
+                avatarUrl: completeProfile.avatar_url,
+                displayName: completeProfile.display_name,
+                phoneNumber: completeProfile.phone_number,
+                profileCompletedAt: completeProfile.profile_completed_at
+            };
+
+            // Remove snake_case fields
+            delete profileResponse.avatar_url;
+            delete profileResponse.display_name;
+            delete profileResponse.phone_number;
+            delete profileResponse.profile_completed_at;
+
             // respond with updated profile data
-            res.status(200).json({ profile: completeProfile });
+            res.status(200).json({ profile: profileResponse });
         } catch (err) {
             // pass errors to error handling middleware
             console.error('Profile setup error:', err);
+            next(err);
+        }
+    },
+
+    // get user profile data
+    getUserProfileData: async (req, res, next) => {
+        const userId = req.user.id; // from auth middleware
+
+        try {
+            // Get complete profile
+            const profile = await userModel.getUserProfile(userId);
+
+            if (!profile) {
+                return res.status(404).json({ error: 'Profile not found' });
+            }
+
+            // Map snake_case DB fields to camelCase for frontend
+            const profileResponse = {
+                id: profile.id,
+                username: profile.username,
+                email: profile.email,
+                displayName: profile.display_name,
+                avatarUrl: profile.avatar_url,
+                bio: profile.bio,
+                phoneNumber: profile.phone_number,
+                gender: profile.gender,
+                dob: profile.dob,
+                profileCompletedAt: profile.profile_completed_at
+            };
+
+            res.status(200).json({ profile: profileResponse });
+        } catch (err) {
+            console.error('Get profile error:', err);
             next(err);
         }
     }

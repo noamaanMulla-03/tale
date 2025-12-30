@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Search, LogOut, Settings, User } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
+import API_URL from '@/config';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -27,6 +28,21 @@ function ChatPage() {
     // Get user info and logout function from auth store
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
+
+    // Get user initials for avatar fallback
+    const getUserInitials = () => {
+        if (!user?.username) return 'U';
+        return user.username.substring(0, 2).toUpperCase();
+    };
+
+    // Get full avatar URL (prepend API_URL if it's a relative path)
+    const getAvatarUrl = () => {
+        if (!user?.avatarUrl) return undefined;
+        // If avatarUrl starts with http/https, return as is
+        if (user.avatarUrl.startsWith('http')) return user.avatarUrl;
+        // Otherwise prepend API_URL
+        return `${API_URL}${user.avatarUrl}`;
+    };
 
     // State for selected contact (currently active chat)
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -74,7 +90,7 @@ function ChatPage() {
             id: Date.now(),
             senderId: parseInt(user?.id || '0'), // Convert string ID to number
             senderName: user?.username || 'You',
-            senderAvatar: user?.avatarUrl || '/default-avatar.png',
+            senderAvatar: getAvatarUrl() || '/default-avatar.png',
             content,
             timestamp: new Date().toISOString(),
             read: false,
@@ -106,12 +122,6 @@ function ChatPage() {
     const handleLogout = () => {
         logout();
         navigate('/login');
-    };
-
-    // Get user initials for avatar fallback
-    const getUserInitials = () => {
-        if (!user?.username) return 'U';
-        return user.username.substring(0, 2).toUpperCase();
     };
 
     // Check if consecutive messages are from the same sender for grouping
@@ -147,7 +157,7 @@ function ChatPage() {
                                 className="text-gray-400 hover:text-white hover:bg-white/10"
                             >
                                 <Avatar className="h-8 w-8 border border-white/10">
-                                    <AvatarImage src={user?.avatarUrl} alt={user?.username} />
+                                    <AvatarImage src={getAvatarUrl()} alt={user?.username} />
                                     <AvatarFallback className="bg-orange-500/20 text-orange-500 text-xs font-semibold">
                                         {getUserInitials()}
                                     </AvatarFallback>

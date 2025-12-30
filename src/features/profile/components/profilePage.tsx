@@ -14,8 +14,9 @@ import { format } from 'date-fns/format';
 import { Textarea } from '@/components/ui/textarea';
 import { z } from 'zod';
 import { FileUpload } from '@/components/ui/file-upload';
-import { uploadProfileSetup } from '../services/profileSetup';
+import { uploadProfileSetup, getUserProfile } from '../services/profileSetup';
 import { useNavigate } from 'react-router-dom';
+import API_URL from '@/config';
 
 // Zod schema for profile validation
 const profileSchema = z.object({
@@ -37,6 +38,7 @@ export function ProfilePage() {
     const { user, updateUser } = useAuthStore();
     const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     // Display Name state initialized as empty string
     const [displayName, setDisplayName] = useState('');
     // Gender state initialized as empty string
@@ -51,14 +53,46 @@ export function ProfilePage() {
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string>('');
 
+    // Fetch existing profile data on mount
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const profile = await getUserProfile();
+
+                // Populate form fields with existing data
+                if (profile.displayName) setDisplayName(profile.displayName);
+                if (profile.gender) setGender(profile.gender);
+                if (profile.dob) setDob(new Date(profile.dob));
+                if (profile.phoneNumber) setPhoneNumber(profile.phoneNumber);
+                if (profile.bio) setBio(profile.bio);
+
+                // Set avatar preview if exists
+                if (profile.avatarUrl) {
+                    const fullAvatarUrl = profile.avatarUrl.startsWith('http')
+                        ? profile.avatarUrl
+                        : `${API_URL}${profile.avatarUrl}`;
+                    setAvatarPreview(fullAvatarUrl);
+                }
+            } catch (error) {
+                // If profile doesn't exist yet, that's fine - user is setting it up for first time
+                console.log('No existing profile data');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, []);
+
     // Cleanup preview URL on unmount
     useEffect(() => {
         return () => {
-            if (avatarPreview) {
+            if (avatarPreview && avatarFile) {
+                // Only revoke if it's a blob URL (from file upload)
                 URL.revokeObjectURL(avatarPreview);
             }
         };
-    }, [avatarPreview]);
+    }, [avatarPreview, avatarFile]);
 
     const handleSave = async () => {
         // Validate form data
@@ -128,11 +162,26 @@ export function ProfilePage() {
 
     const handleAvatarRemove = () => {
         setAvatarFile(null);
-        if (avatarPreview) {
+        if (avatarPreview && avatarFile) {
+            // Only revoke if it's a blob URL (from file upload)
             URL.revokeObjectURL(avatarPreview);
-            setAvatarPreview('');
         }
+        setAvatarPreview('');
     };
+
+    // Show loading state while fetching profile
+    if (isLoading) {
+        return (
+            <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center space-y-4">
+                        <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="text-gray-400">Loading profile...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
