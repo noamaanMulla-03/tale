@@ -135,17 +135,7 @@ export function GroupInfoPanel({
             >
                 {/* Panel Header */}
                 <div className="h-20 border-b border-white/10 px-6 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onClose}
-                            className="text-gray-400 hover:text-white hover:bg-white/10"
-                        >
-                            <ChevronLeft className="h-5 w-5" />
-                        </Button>
-                        <h2 className="text-white font-semibold text-lg">Group Info</h2>
-                    </div>
+                    <h2 className="text-white font-semibold text-lg">Group Info</h2>
                     <Button
                         variant="ghost"
                         size="icon"
