@@ -7,8 +7,14 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 
 // import dotenv to manage environment variables
+// Load from root .env file (one level up from server directory)
 import dotenv from 'dotenv';
-dotenv.config();
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename_env = fileURLToPath(import.meta.url);
+const __dirname_env = dirname(__filename_env);
+dotenv.config({ path: join(__dirname_env, '../.env') });
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -29,8 +35,9 @@ const httpServer = createServer(app);
 // Initialize Socket.IO with CORS configuration
 const io = new Server(httpServer, {
     cors: {
-        origin: '*', // In production, specify your frontend URL
-        methods: ['GET', 'POST']
+        origin: process.env.CORS_ORIGIN || '*', // Set specific origin in production
+        methods: ['GET', 'POST'],
+        credentials: true
     }
 });
 
@@ -49,9 +56,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // CORS for frontend - must be before routes
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const allowedOrigin = process.env.CORS_ORIGIN || '*';
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
     res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, PATCH, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
     
     // Handle preflight requests
     if (req.method === 'OPTIONS') {

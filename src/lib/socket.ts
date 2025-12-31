@@ -6,7 +6,7 @@
 // ============================================================================
 
 import { io, Socket } from 'socket.io-client';
-import API_URL from '@/config';
+import API_URL, { WS_URL } from '@/config';
 import { Message } from '@/types/chat';
 
 // ============================================================================
@@ -17,9 +17,9 @@ import { Message } from '@/types/chat';
 // Initialized when connectSocket is called
 let socket: Socket | null = null;
 
-// Get the WebSocket URL from API_URL
-// Example: http://localhost:3000 -> http://localhost:3000
-const SOCKET_URL = API_URL;
+// Get the WebSocket URL from environment configuration
+// Supports separate WebSocket server or same as API server
+const SOCKET_URL = WS_URL || API_URL;
 
 // ============================================================================
 // CONNECTION MANAGEMENT

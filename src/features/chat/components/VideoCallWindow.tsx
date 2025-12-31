@@ -253,20 +253,20 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
     /**
      * Get call status text based on current state
      */
-    const getStatusText = (): string => {
-        switch (callState) {
-            case 'calling':
-                return 'Calling...';
-            case 'ringing':
-                return 'Incoming Call...';
-            case 'connected':
-                return formatDuration(callDuration);
-            case 'ended':
-                return 'Call Ended';
-            default:
-                return '';
-        }
-    };
+    // const getStatusText = (): string => {
+    //     switch (callState) {
+    //         case 'calling':
+    //             return 'Calling...';
+    //         case 'ringing':
+    //             return 'Incoming Call...';
+    //         case 'connected':
+    //             return formatDuration(callDuration);
+    //         case 'ended':
+    //             return 'Call Ended';
+    //         default:
+    //             return '';
+    //     }
+    // };
 
     // ========================================================================
     // EVENT HANDLERS

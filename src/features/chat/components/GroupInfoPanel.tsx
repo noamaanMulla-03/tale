@@ -24,7 +24,6 @@ import {
     LogOut,
     Edit,
     Shield,
-    ChevronLeft,
 } from 'lucide-react';
 import { getGroupMembers, removeGroupMember } from '@/features/chat/services/chat';
 import { getAvatarUrl, getUserInitials } from '@/lib/avatar';
