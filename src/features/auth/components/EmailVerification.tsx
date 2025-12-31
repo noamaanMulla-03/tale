@@ -73,7 +73,7 @@ export function EmailVerification() {
                 // show success toast
                 toast.success(response.message);
                 // navigate to profile setup
-                navigate('/profile');
+                navigate('/profile-setup');
             } catch (error: any) {
                 // show error toast
                 const errorMessage = error.response?.data?.error || 'Invalid verification code';
