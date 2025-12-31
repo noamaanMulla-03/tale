@@ -1,24 +1,17 @@
 // filename: server/index.js
 import express from 'express';
-import path from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
 // import dotenv to manage environment variables
 // Load from root .env file (one level up from server directory)
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
-const __filename_env = fileURLToPath(import.meta.url);
-const __dirname_env = dirname(__filename_env);
-dotenv.config({ path: join(__dirname_env, '../.env') });
-
-// Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+dotenv.config({ path: join(__dirname, '../.env') });
 
 // import db connection
 import { pool } from './db.js';
