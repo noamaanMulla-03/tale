@@ -23,9 +23,9 @@ export function EmailVerification() {
     // navigate hook
     const navigate = useNavigate();
     // 5 minutes in seconds
-    const [timeLeft, setTimeLeft] = useState(300); 
+    const [timeLeft, setTimeLeft] = useState(300);
     // percentage
-    const [progress, setProgress] = useState(100); 
+    const [progress, setProgress] = useState(100);
 
     // Timer effect
     useEffect(() => {
@@ -43,13 +43,13 @@ export function EmailVerification() {
                 // return new time
                 return newTime;
             });
-        // decrement every second
+            // decrement every second
         }, 1000);
 
         // cleanup on unmount
         return () => clearInterval(timer);
         // Reset timer when resending
-    }, [isResending]); 
+    }, [isResending]);
 
     // format time in mm:ss
     const formatTime = (seconds: number) => {
@@ -183,13 +183,13 @@ export function EmailVerification() {
                                 {formatTime(timeLeft)}
                             </span>
                         </div>
-                        <Progress 
-                            value={progress} 
+                        <Progress
+                            value={progress}
                             className="h-1.5 bg-[#3a3a3a] [&>div]:bg-linear-to-r [&>div]:from-orange-500 [&>div]:to-orange-600"
                         />
                     </div>
                 </div>
-                
+
                 {/* Resend Code */}
                 <div className="text-center pt-4 relative z-10">
                     <p className="text-sm text-gray-500">

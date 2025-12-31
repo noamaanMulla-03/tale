@@ -3,13 +3,13 @@ import userModel from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { Resend } from "resend";
+import sgMail from "@sendgrid/mail";
 import generateOTPEmailTemplate from "./OTPTemplate.js";
 import "dotenv/config";
 import Redis from "ioredis";
 
-// new resend instance
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Initialize SendGrid with API key
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // temporary map for otp (USE REDIS IN PROD)
 const redis = new Redis(process.env.REDIS_URL);
@@ -135,9 +135,10 @@ const userController = {
             // options: EX 300 (5 minutes)
             await redis.set(`otp:${email}`, OTP, 'EX', 300);
             
-            await resend.emails.send({
-                from: 'Tale <onboarding@resend.dev>',
+            // Send email via SendGrid
+            await sgMail.send({
                 to: email,
+                from: process.env.SENDGRID_FROM_EMAIL || 'noreply@yourdomain.com',
                 subject: 'Verify your email - Tale',
                 html: emailTemplate.html,
                 text: emailTemplate.text
