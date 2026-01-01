@@ -223,23 +223,12 @@ const sendMessage = async (
     conversationId: number,
     messageData: SendMessageRequest
 ): Promise<MessageResponse> => {
-    try {
-        // POST request to /api/chat/conversations/:conversationId/messages
-        const response = await api.post(
-            `/api/chat/conversations/${conversationId}/messages`,
-            messageData
-        );
+    const response = await api.post(
+        `/api/chat/conversations/${conversationId}/messages`,
+        messageData
+    );
 
-        // Log the response
-        console.log(`[+] Sent message to conversation ${conversationId}`);
-
-        // Return created message
-        return response.data.message;
-    } catch (error) {
-        // Log the error
-        console.error('[!] Error sending message:', error);
-        throw error;
-    }
+    return response.data.message;
 };
 
 /**

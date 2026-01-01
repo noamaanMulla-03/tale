@@ -175,35 +175,70 @@ interface ChatState {
  * - conversationType is 'group'
  * - Includes participant count, description, creator ID
  */
+/**
+ * Convert API conversation response to Contact type for frontend use
+ * 
+ * Handles both conversation types:
+ * 1. Direct messages (1-on-1 chat)
+ *    - Uses other user's name, avatar, username
+ *    - conversationType: 'direct'
+ * 
+ * 2. Group chats (multi-user conversation)
+ *    - Uses group name, avatar, description
+ *    - conversationType: 'group'
+ *    - Includes participant count and creator info
+ * 
+ * @param conv - Conversation data from backend API
+ * @returns Contact object optimized for frontend rendering in sidebar
+ */
 const convertConversationToContact = (conv: ConversationResponse): Contact => {
     const isGroup = conv.conversation_type === 'group';
 
-    // Ensure timestamp is valid
+    // Ensure timestamp is always valid for proper sorting and display
+    // Priority: last_message_time > updated_at > current time
     const timestamp = conv.last_message_time || conv.updated_at || new Date().toISOString();
 
     return {
+        // Unique identifier: conversation_id for groups, other_user_id for direct
         id: isGroup ? conv.conversation_id : (conv.other_user_id ?? 0),
         conversationId: conv.conversation_id,
         conversationType: conv.conversation_type as 'direct' | 'group',
+
+        // Display info: varies based on conversation type
         name: isGroup ? (conv.group_name || 'Unnamed Group') : (conv.other_display_name ?? 'Unknown'),
         username: isGroup ? '' : (conv.other_username ?? ''),
         avatar: isGroup
             ? (conv.group_avatar || '/default-group-avatar.png')
             : (conv.other_avatar_url || '/default-avatar.png'),
+
+        // Group-specific fields (null for direct messages)
         groupName: conv.group_name,
         groupAvatar: conv.group_avatar,
         groupDescription: conv.group_description,
         groupCreatorId: conv.group_creator_id,
         participantCount: conv.participant_count,
+
+        // Common fields for both types
         lastMessage: conv.last_message_content || '',
         timestamp: timestamp,
         unread: conv.unread_count,
-        online: false,
+
+        // Online status (only relevant for direct messages)
+        online: false, // Will be updated via WebSocket events
     };
 };
 
 /**
- * Convert API message response to Message type
+ * Convert API message response to Message type for frontend use
+ * 
+ * Transforms backend database format to frontend display format:
+ * - snake_case → camelCase field names
+ * - created_at → timestamp
+ * - sender_id → senderId
+ * - etc.
+ * 
+ * @param msg - Message data from backend API in MessageResponse format
+ * @returns Message object optimized for frontend rendering
  */
 const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
     return {
@@ -213,7 +248,7 @@ const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
         senderAvatar: msg.sender_avatar_url || '/default-avatar.png',
         content: msg.content || '',
         timestamp: msg.created_at,
-        read: true, // Assume read if we're viewing it
+        read: true, // Assume read if user is viewing the conversation
         type: msg.message_type,
         fileUrl: msg.file_url,
         fileName: msg.file_name,
@@ -355,14 +390,9 @@ const useChatStore = create<ChatState>((set, get) => ({
 
         try {
             // Send message via API
-            const sentMessage = await sendMessageAPI(conversationId, messageData);
-
-            // Convert to Message type
-            const message = convertMessageResponseToMessage(sentMessage);
-
-            // Add message to state (optimistic update)
-            // Note: addMessage already calls updateConversation internally
-            get().addMessage(conversationId, message);
+            // Note: We don't add the message here - the WebSocket event will handle it
+            // This ensures all clients (including sender) receive messages in the same way
+            await sendMessageAPI(conversationId, messageData);
         } catch (error) {
             console.error('[!] Error sending message:', error);
             throw error;
@@ -373,15 +403,18 @@ const useChatStore = create<ChatState>((set, get) => ({
     },
 
     addMessage: (conversationId, message) => {
+        // Add new message to the messages array for this conversation
         set((state) => {
             const existingMessages = state.messages[conversationId] || [];
 
             // Check if message already exists (prevent duplicates)
+            // This is crucial since WebSocket events might be received multiple times
             const messageExists = existingMessages.some(m => m.id === message.id);
             if (messageExists) {
-                return state;
+                return state; // No change if duplicate
             }
 
+            // Add new message to end of array (messages are in chronological order)
             return {
                 messages: {
                     ...state.messages,
@@ -390,7 +423,8 @@ const useChatStore = create<ChatState>((set, get) => ({
             };
         });
 
-        // Update conversation in sidebar with new last message
+        // Update conversation in sidebar with new last message and timestamp
+        // This keeps the conversation list showing the latest message
         get().updateConversation(conversationId, {
             lastMessage: message.content,
             timestamp: message.timestamp,

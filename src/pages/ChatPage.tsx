@@ -56,6 +56,16 @@ import { createOrGetConversation, MessageResponse } from '@/features/chat/servic
 
 /**
  * Helper function to convert MessageResponse (from backend/WebSocket) to Message type
+ * 
+ * Backend format (MessageResponse):
+ * - Uses snake_case: sender_id, created_at, message_type, etc.
+ * - Includes database fields: id, conversation_id, sender info
+ * 
+ * Frontend format (Message):
+ * - Uses camelCase: senderId, timestamp, type, etc.
+ * - Simplified structure optimized for UI rendering
+ * 
+ * This conversion ensures type safety and consistent data structure across the frontend
  */
 const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
     return {
@@ -64,9 +74,9 @@ const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
         senderName: msg.sender_display_name,
         senderAvatar: msg.sender_avatar_url || '/default-avatar.png',
         content: msg.content || '',
-        timestamp: msg.created_at,
-        read: true,
-        type: msg.message_type,
+        timestamp: msg.created_at, // Backend's created_at becomes frontend's timestamp
+        read: true, // Assume read since user is viewing the conversation
+        type: msg.message_type, // 'text' | 'image' | 'file' | 'voice'
         fileUrl: msg.file_url,
         fileName: msg.file_name,
         isEdited: msg.is_edited,
@@ -162,19 +172,33 @@ function ChatPage() {
         // ====================================================================
 
         // Listen for new messages
+        // Note: This handles messages from ALL sources:
+        // 1. Messages sent by current user (echoed back from server)
+        // 2. Messages sent by other users in the conversation
+        // This unified approach ensures consistency across all clients
         const cleanupNewMessage = onNewMessage(({ conversationId, message }) => {
+            // Convert backend MessageResponse format to frontend Message format
             const convertedMessage = convertMessageResponseToMessage(message);
+
+            // Add message to store
+            // addMessage handles duplicate prevention automatically
             addMessage(conversationId, convertedMessage);
         });
 
         // Listen for message edits
+        // Handles when any user edits their message in the conversation
         const cleanupMessageEdited = onMessageEdited(({ conversationId, message }) => {
+            // Convert backend format to frontend format
             const convertedMessage = convertMessageResponseToMessage(message);
+
+            // Update the specific message in the store
             updateMessage(conversationId, convertedMessage.id, convertedMessage);
         });
 
         // Listen for message deletions
+        // Handles when any user deletes their message in the conversation
         const cleanupMessageDeleted = onMessageDeleted(({ conversationId, messageId }) => {
+            // Remove the message from the store
             removeMessage(conversationId, messageId);
         });
 

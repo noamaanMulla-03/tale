@@ -197,16 +197,18 @@ const chatController = {
                 fileSize
             );
 
-            // Get other participants to notify via WebSocket
-            const otherParticipants = await chatModel.getOtherParticipants(conversationId, userId);
+            // Get ALL participants (including sender) for WebSocket notification
+            // Note: We emit to sender too for multi-device sync (e.g., desktop + mobile)
+            const allParticipants = await chatModel.getConversationParticipants(conversationId);
 
-            // Emit WebSocket event to other participants
+            // Emit WebSocket event to ALL participants
+            // This ensures all clients (including sender on other devices) receive the message
             const io = req.app.get('io');
             
             // Send new message event to each participant's room
-            otherParticipants.forEach(participantId => {
-                io.to(`user_${participantId}`).emit('new_message', {
-                    conversationId,
+            allParticipants.forEach(participant => {
+                io.to(`user_${participant.user_id}`).emit('new_message', {
+                    conversationId: parseInt(conversationId),
                     message
                 });
             });
