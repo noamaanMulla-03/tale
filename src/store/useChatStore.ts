@@ -408,13 +408,8 @@ const useChatStore = create<ChatState>((set, get) => ({
             const message = convertMessageResponseToMessage(sentMessage);
 
             // Add message to state (optimistic update)
+            // Note: addMessage already calls updateConversation internally
             get().addMessage(conversationId, message);
-
-            // Update conversation's last message and timestamp in sidebar
-            get().updateConversation(conversationId, {
-                lastMessage: message.content,
-                timestamp: message.timestamp,
-            });
 
             console.log(`[+] Sent message to conversation ${conversationId}`);
         } catch (error) {
@@ -435,6 +430,12 @@ const useChatStore = create<ChatState>((set, get) => ({
             timestampType: typeof message.timestamp,
             content: message.content?.substring(0, 50)
         });
+
+        // Validate timestamp before proceeding
+        if (!message.timestamp) {
+            console.error('[useChatStore] Message missing timestamp, using current time:', message);
+            message = { ...message, timestamp: new Date().toISOString() };
+        }
 
         set((state) => {
             // Get existing messages for this conversation
@@ -457,11 +458,16 @@ const useChatStore = create<ChatState>((set, get) => ({
         });
 
         // Update conversation in sidebar with new last message
-        console.log('[useChatStore] Updating conversation timestamp:', message.timestamp);
-        get().updateConversation(conversationId, {
-            lastMessage: message.content,
-            timestamp: message.timestamp,
-        });
+        // Wrap in try-catch to prevent crashes from corrupting store state
+        try {
+            console.log('[useChatStore] Updating conversation timestamp:', message.timestamp);
+            get().updateConversation(conversationId, {
+                lastMessage: message.content,
+                timestamp: message.timestamp,
+            });
+        } catch (error) {
+            console.error('[useChatStore] Error updating conversation:', error);
+        }
     },
 
     updateMessage: (conversationId, messageId, updates) => {

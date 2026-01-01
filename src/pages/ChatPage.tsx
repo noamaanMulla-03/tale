@@ -345,10 +345,27 @@ function ChatPage() {
     };
 
     // Filter contacts based on search query
-    const filteredContacts = conversations.filter(contact =>
-        contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        contact.username.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Also validate and fix any invalid timestamps to prevent crashes
+    const filteredContacts = conversations
+        .map(contact => {
+            // Validate timestamp - if invalid, use current time
+            if (!contact.timestamp || isNaN(new Date(contact.timestamp).getTime())) {
+                console.warn('[ChatPage] Invalid contact timestamp, fixing:', {
+                    conversationId: contact.conversationId,
+                    name: contact.name,
+                    timestamp: contact.timestamp
+                });
+                return {
+                    ...contact,
+                    timestamp: new Date().toISOString()
+                };
+            }
+            return contact;
+        })
+        .filter(contact =>
+            contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            contact.username.toLowerCase().includes(searchQuery.toLowerCase())
+        );
 
     // Handle logout
     const handleLogout = () => {

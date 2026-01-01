@@ -204,8 +204,17 @@ const chatController = {
             // (Socket.IO instance is attached to req.app in server setup)
             const io = req.app.get('io');
             
+            // Log the message being sent for debugging
+            console.log('[chatController] Sending new_message to participants:', {
+                conversationId,
+                participants: otherParticipants,
+                messageId: message.id,
+                hasCreatedAt: !!message.created_at
+            });
+            
             // Send new message event to each participant's room
             otherParticipants.forEach(participantId => {
+                console.log(`[chatController] Emitting to user_${participantId}`);
                 io.to(`user_${participantId}`).emit('new_message', {
                     conversationId,
                     message
