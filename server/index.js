@@ -107,6 +107,11 @@ pool.query('SELECT NOW()')
 // Format: { userId: socketId }
 const userSockets = new Map();
 
+// Store online users (user IDs)
+// This tracks which users are currently connected
+// Format: Set of user IDs
+const onlineUsers = new Set();
+
 // Socket.IO connection handler
 io.on('connection', (socket) => {
     console.log(`[+] Socket connected: ${socket.id}`);
@@ -129,6 +134,9 @@ io.on('connection', (socket) => {
         // Store user's socket ID for lookup
         userSockets.set(userId, socket.id);
         
+        // Add user to online users set
+        onlineUsers.add(userId);
+        
         // Join user-specific room (format: user_123)
         // Used to send messages to specific users
         socket.join(`user_${userId}`);
@@ -137,6 +145,17 @@ io.on('connection', (socket) => {
         socket.userId = userId;
         
         console.log(`[+] User ${userId} authenticated and joined room: user_${userId}`);
+
+        // CRITICAL: Send list of currently online users to the newly connected client
+        // This ensures the client knows who is already online when they connect
+        socket.emit('online_users_list', {
+            userIds: Array.from(onlineUsers)
+        });
+
+        // Broadcast to ALL other clients that this user is now online
+        socket.broadcast.emit('user_online', {
+            userId: userId
+        });
     });
 
     /**
@@ -213,15 +232,20 @@ io.on('connection', (socket) => {
     /**
      * Event: 'online'
      * Client announces they are online
-     * Broadcast to all connected clients (can be optimized to send only to contacts)
+     * This is now handled automatically during authentication
+     * Keeping this for backward compatibility but it's redundant
      */
     socket.on('online', () => {
         if (!socket.userId) {
             return;
         }
 
-        // Broadcast online status to all clients
-        io.emit('user_online', {
+        // Add to online users set (in case not added during auth)
+        onlineUsers.add(socket.userId);
+
+        // Broadcast online status to all OTHER clients (not sender)
+        // Sender already knows they're online
+        socket.broadcast.emit('user_online', {
             userId: socket.userId
         });
     });
@@ -293,8 +317,11 @@ io.on('connection', (socket) => {
      */
     socket.on('disconnect', () => {
         console.log(`[-] Socket disconnected: ${socket.id}`);
+Remove from online users set
+            onlineUsers.delete(socket.userId);
 
-        if (socket.userId) {
+            // Broadcast offline status to all OTHER clients
+            socket.broadcastcket.userId) {
             // Remove from user sockets map
             userSockets.delete(socket.userId);
 

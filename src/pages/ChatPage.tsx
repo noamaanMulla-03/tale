@@ -39,6 +39,7 @@ import {
     onUserStopTyping,
     onUserOnline,
     onUserOffline,
+    onOnlineUsersList,
     emitTyping,
     emitStopTyping,
 } from '@/lib/socket';
@@ -104,6 +105,7 @@ function ChatPage() {
         removeTypingUser,
         getTypingUsers,
         setUserOnline,
+        setUsersOnline,
         setUserOffline,
         clearChatData,
         currentCall,
@@ -219,12 +221,21 @@ function ChatPage() {
         // ONLINE STATUS
         // ====================================================================
 
-        // Listen for online/offline status
+        // Listen for initial online users list (sent once on connect)
+        // This ensures we know who is already online when we connect
+        const cleanupOnlineUsersList = onOnlineUsersList(({ userIds }) => {
+            console.log('[ChatPage] Received initial online users list:', userIds);
+            setUsersOnline(userIds);
+        });
+
+        // Listen for online/offline status updates (real-time)
         const cleanupUserOnline = onUserOnline(({ userId }) => {
+            console.log('[ChatPage] User came online:', userId);
             setUserOnline(userId);
         });
 
         const cleanupUserOffline = onUserOffline(({ userId }) => {
+            console.log('[ChatPage] User went offline:', userId);
             setUserOffline(userId);
         });
 
@@ -262,12 +273,13 @@ function ChatPage() {
             if (state === 'ended' && currentCall) {
                 setCurrentCall(null);
             }
-        });
-
-        // Cleanup all listeners on unmount
-        return () => {
-            cleanupNewMessage();
-            cleanupMessageEdited();
+        });OnlineUsersList();
+            cleanupUserOnline();
+            cleanupUserOffline();
+            cleanupIncomingCall();
+            cleanupCallStateChange();
+        };
+    }, [user?.id, conversations, currentCall, addMessage, updateMessage, removeMessage, addTypingUser, removeTypingUser, setUserOnline, setUsers
             cleanupMessageDeleted();
             cleanupUserTyping();
             cleanupUserStopTyping();

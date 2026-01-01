@@ -58,7 +58,8 @@ export const connectSocket = (userId: number): void => {
         // Server will join user to their personal room (user_123)
         socket?.emit('authenticate', userId);
 
-        // Emit online status
+        // Note: We don't emit 'online' here anymore as authentication handles it
+        // Keeping the old 'online' event for backward compatibility
         socket?.emit('online');
     });
 
@@ -309,6 +310,26 @@ export const onUserStopTyping = (
 
     return () => {
         socket?.off('user_stop_typing', callback);
+    };
+};
+
+/**
+ * Listen for initial online users list
+ * Server sends this when client first connects with list of all currently online users
+ * @param callback - Function to call with array of online user IDs
+ * @returns Cleanup function to remove listener
+ */
+export const onOnlineUsersList = (
+    callback: (data: { userIds: number[] }) => void
+): (() => void) => {
+    if (!socket) {
+        return () => { };
+    }
+
+    socket.on('online_users_list', callback);
+
+    return () => {
+        socket?.off('online_users_list', callback);
     };
 };
 

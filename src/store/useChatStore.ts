@@ -138,10 +138,13 @@ interface ChatState {
     // ONLINE STATUS ACTIONS
     // ========================================================================
 
-    // Set user online status
+    // Mark a user as online and update their conversations
     setUserOnline: (userId: number) => void;
 
-    // Set user offline status
+    // Mark multiple users as online (bulk update for initial online users list)
+    setUsersOnline: (userIds: number[]) => void;
+
+    // Mark a user as offline and update their conversations
     setUserOffline: (userId: number) => void;
 
     // Check if user is online
@@ -411,22 +414,31 @@ const useChatStore = create<ChatState>((set, get) => ({
             // This is crucial since WebSocket events might be received multiple times
             const messageExists = existingMessages.some(m => m.id === message.id);
             if (messageExists) {
+                console.log(`[ChatStore] Duplicate message ${message.id} ignored for conversation ${conversationId}`);
                 return state; // No change if duplicate
             }
 
-            // Add new message to end of array (messages are in chronological order)
+            // Create a new array with the new message appended
+            // Messages are in chronological order (oldest first)
+            const updatedMessages = [...existingMessages, message];
+
+            console.log(`[ChatStore] Adding message ${message.id} to conversation ${conversationId}. Total messages: ${updatedMessages.length}`);
+
+            // Create new messages object to ensure state update triggers re-render
+            const newMessagesState = {
+                ...state.messages,
+                [conversationId]: updatedMessages
+            };
+
             return {
-                messages: {
-                    ...state.messages,
-                    [conversationId]: [...existingMessages, message]
-                }
+                messages: newMessagesState
             };
         });
 
         // Update conversation in sidebar with new last message and timestamp
-        // This keeps the conversation list showing the latest message
+        // This keeps the conversation list showing the latest message preview
         get().updateConversation(conversationId, {
-            lastMessage: message.content,
+            lastMessage: message.content || '[File]',
             timestamp: message.timestamp,
         });
     },
@@ -518,32 +530,78 @@ const useChatStore = create<ChatState>((set, get) => ({
 
     setUserOnline: (userId) => {
         set((state) => {
+            // Add user to online users set
             const newOnlineUsers = new Set(state.onlineUsers);
             newOnlineUsers.add(userId);
-            return { onlineUsers: newOnlineUsers };
-        });
 
-        // Update conversations to reflect online status
-        set((state) => ({
-            conversations: state.conversations.map(conv =>
-                conv.id === userId ? { ...conv, online: true } : conv
-            )
-        }));
+            // Update conversations to reflect online status
+            // For DIRECT conversations: conv.id is the OTHER user's ID
+            // So we check if conv.id (other user) matches the userId that came online
+            const updatedConversations = state.conversations.map(conv => {
+                // Only update direct message conversations (not groups)
+                if (conv.conversationType === 'direct' && conv.id === userId) {
+                    return { ...conv, online: true };
+                }
+                return conv;
+            });
+
+            console.log(`[ChatStore] User ${userId} is now online. Updated ${updatedConversations.filter(c => c.online && c.conversationType === 'direct').length} direct conversations.`);
+
+            return { 
+                onlineUsers: newOnlineUsers,
+                conversations: updatedConversations
+            };
+        });
+    },
+
+    setUsersOnline: (userIds) => {
+        set((state) => {
+            // Add all users to online users set
+            const newOnlineUsers = new Set(state.onlineUsers);
+            userIds.forEach(id => newOnlineUsers.add(id));
+
+            // Update conversations to reflect online status for all users
+            const updatedConversations = state.conversations.map(conv => {
+                // Only update direct message conversations where the other user is in the online list
+                if (conv.conversationType === 'direct' && userIds.includes(conv.id)) {
+                    return { ...conv, online: true };
+                }
+                return conv;
+            });
+
+            console.log(`[ChatStore] Received initial online users list: ${userIds.length} users online. Updated ${updatedConversations.filter(c => c.online && c.conversationType === 'direct').length} direct conversations.`);
+
+            return { 
+                onlineUsers: newOnlineUsers,
+                conversations: updatedConversations
+            };
+        });
     },
 
     setUserOffline: (userId) => {
         set((state) => {
+            // Remove user from online users set
             const newOnlineUsers = new Set(state.onlineUsers);
             newOnlineUsers.delete(userId);
-            return { onlineUsers: newOnlineUsers };
-        });
 
-        // Update conversations to reflect offline status
-        set((state) => ({
-            conversations: state.conversations.map(conv =>
-                conv.id === userId ? { ...conv, online: false } : conv
-            )
-        }));
+            // Update conversations to reflect offline status
+            // For DIRECT conversations: conv.id is the OTHER user's ID
+            // So we check if conv.id (other user) matches the userId that went offline
+            const updatedConversations = state.conversations.map(conv => {
+                // Only update direct message conversations (not groups)
+                if (conv.conversationType === 'direct' && conv.id === userId) {
+                    return { ...conv, online: false };
+                }
+                return conv;
+            });
+
+            console.log(`[ChatStore] User ${userId} is now offline. Updated ${updatedConversations.filter(c => !c.online && c.conversationType === 'direct').length} direct conversations.`);
+
+            return { 
+                onlineUsers: newOnlineUsers,
+                conversations: updatedConversations
+            };
+        });
     },
 
     isUserOnline: (userId) => {
