@@ -14,7 +14,7 @@ import { VideoCallWindow } from '@/features/chat/components/VideoCallWindow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, LogOut, Settings, User, UserPlus, X, Users as UsersIcon, Edit3 } from 'lucide-react';
+import { Search, LogOut, Settings, User, UserPlus, X, Users as UsersIcon, Edit3, Menu, ArrowLeft } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import useChatStore from '@/store/useChatStore';
 import { useNavigate } from 'react-router-dom';
@@ -127,6 +127,9 @@ function ChatPage() {
 
     // State for group info panel
     const [isGroupInfoPanelOpen, setIsGroupInfoPanelOpen] = useState(false);
+
+    // State for mobile sidebar visibility
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(true);
 
     // Ref for auto-scrolling to bottom of messages
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -324,6 +327,9 @@ function ChatPage() {
                 console.error('Failed to load messages:', err);
             });
         }
+
+        // Close mobile sidebar when contact is selected
+        setIsMobileSidebarOpen(false);
     };
 
     // Handle sending a new message
@@ -554,6 +560,14 @@ function ChatPage() {
         setCurrentCall(null);
     };
 
+    /**
+     * Handle back button on mobile - returns to sidebar
+     */
+    const handleMobileBack = () => {
+        setIsMobileSidebarOpen(true);
+        setSelectedConversation(null);
+    };
+
     // Check if consecutive messages are from the same sender for grouping
     const shouldShowAvatar = (index: number) => {
         if (index === 0) return true;
@@ -565,15 +579,21 @@ function ChatPage() {
     return (
         <div className="h-screen flex bg-[#1a1a1a] overflow-hidden">
             {/* Left Sidebar - Contacts List */}
-            <div className="w-80 border-r border-white/10 flex flex-col bg-[#2a2a2a]/95 backdrop-blur-xl">
+            {/* Mobile: Full width, toggleable. Desktop: Fixed 320px width */}
+            <div className={`
+                w-full md:w-80 border-r border-white/10 flex flex-col bg-[#2a2a2a]/95 backdrop-blur-xl
+                transition-transform duration-300 ease-in-out
+                ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                ${!isMobileSidebarOpen && 'md:flex absolute md:relative z-20 md:z-auto inset-y-0 left-0'}
+            `}>
                 {/* Sidebar Header with user info */}
-                <div className="h-20 border-b border-white/10 px-4 flex items-center justify-between">
+                <div className="h-16 md:h-20 border-b border-white/10 px-3 md:px-4 flex items-center justify-between">
                     {/* Logo/Title */}
                     <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10">
-                            <div className="w-6 h-6 rounded-full border-2 border-orange-500/50" />
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10">
+                            <div className="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-orange-500/50" />
                         </div>
-                        <h1 className="text-xl font-bold text-white">
+                        <h1 className="text-lg md:text-xl font-bold text-white">
                             <span className="text-orange-500">Tale</span>
                         </h1>
                     </div>
@@ -622,11 +642,11 @@ function ChatPage() {
                 </div>
 
                 {/* Search and compose */}
-                <div className="p-4 border-b border-white/10">
+                <div className="p-3 md:p-4 border-b border-white/10">
                     <div className="flex items-center gap-2">
                         {/* Search Input */}
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <Search className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
                                 type="text"
                                 placeholder={isSearchingUsers ? "Search users..." : "Search..."}
@@ -638,7 +658,7 @@ function ChatPage() {
                                         setSearchQuery(e.target.value);
                                     }
                                 }}
-                                className="h-10 pl-9 pr-3 bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-1 focus-visible:ring-orange-500/50 focus-visible:border-orange-500/50 transition-all"
+                                className="h-9 md:h-10 pl-8 md:pl-9 pr-2 md:pr-3 bg-[#1a1a1a] border-white/10 text-white text-sm placeholder:text-gray-500 focus-visible:ring-1 focus-visible:ring-orange-500/50 focus-visible:border-orange-500/50 transition-all"
                             />
                         </div>
 
@@ -646,10 +666,10 @@ function ChatPage() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
-                                    className="h-10 w-10 p-0 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/30 transition-all duration-200 hover:scale-105 border-0"
+                                    className="h-9 w-9 md:h-10 md:w-10 p-0 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/30 transition-all duration-200 hover:scale-105 border-0"
                                     title="New conversation"
                                 >
-                                    <Edit3 className="h-4 w-4" />
+                                    <Edit3 className="h-3.5 w-3.5 md:h-4 md:w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
@@ -678,10 +698,10 @@ function ChatPage() {
                             <Button
                                 onClick={handleToggleUserSearch}
                                 variant="ghost"
-                                className="h-10 w-10 p-0 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-200"
+                                className="h-9 w-9 md:h-10 md:w-10 p-0 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-200"
                                 title="Cancel search"
                             >
-                                <X className="h-4 w-4" />
+                                <X className="h-3.5 w-3.5 md:h-4 md:w-4" />
                             </Button>
                         )}
                     </div>
@@ -728,10 +748,10 @@ function ChatPage() {
                                         <div
                                             key={user.id}
                                             onClick={() => handleStartConversation(user)}
-                                            className="flex items-center gap-3 p-4 cursor-pointer transition-all duration-200 border-l-2 border-l-transparent hover:bg-white/5 hover:border-l-orange-500 border-b border-white/5"
+                                            className="flex items-center gap-2 md:gap-3 p-3 md:p-4 cursor-pointer transition-all duration-200 border-l-2 border-l-transparent hover:bg-white/5 hover:border-l-orange-500 border-b border-white/5"
                                         >
                                             {/* User avatar */}
-                                            <Avatar className="h-12 w-12 border-2 border-white/10">
+                                            <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 border-white/10">
                                                 <AvatarImage src={getAvatarUrl(user.avatarUrl)} alt={user.username} />
                                                 <AvatarFallback className="bg-orange-500/20 text-orange-500 font-semibold">
                                                     {getUserInitials(user.username)}
@@ -797,19 +817,35 @@ function ChatPage() {
             </div>
 
             {/* Right Side - Chat Area */}
-            <div className="flex-1 flex flex-col">
+            {/* Mobile: Full width when sidebar closed. Desktop: Always visible */}
+            <div className={`
+                flex-1 flex flex-col
+                ${isMobileSidebarOpen && selectedContact ? 'hidden md:flex' : 'flex'}
+            `}>
                 {selectedContact ? (
                     <>
                         {/* Chat header with contact info */}
-                        <ChatHeader
-                            contact={selectedContact}
-                            onOpenGroupInfo={handleOpenGroupInfo}
-                            onStartCall={handleStartCall}
-                        />
+                        {/* Mobile: Show back button. Desktop: Normal header */}
+                        <div className="relative">
+                            {/* Mobile back button - positioned absolutely over header */}
+                            <Button
+                                onClick={handleMobileBack}
+                                variant="ghost"
+                                size="icon"
+                                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 md:hidden text-white hover:bg-white/10"
+                            >
+                                <ArrowLeft className="h-5 w-5" />
+                            </Button>
+                            <ChatHeader
+                                contact={selectedContact}
+                                onOpenGroupInfo={handleOpenGroupInfo}
+                                onStartCall={handleStartCall}
+                            />
+                        </div>
 
                         {/* Messages area */}
                         <ScrollArea className="flex-1 bg-[#1a1a1a]">
-                            <div className="p-6">
+                            <div className="p-3 md:p-6">
                                 {messages.length > 0 ? (
                                     messages.map((message, index) => (
                                         <MessageBubble

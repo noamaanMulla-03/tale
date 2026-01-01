@@ -57,7 +57,7 @@ export function MessageBubble({ message, showAvatar = true, isGrouped = false, i
     return (
         <div
             className={cn(
-                "flex gap-3 mb-4",
+                "flex gap-2 md:gap-3 mb-3 md:mb-4",
                 // Align sent messages to the right
                 isSent && "justify-end",
                 // Reduce bottom margin for grouped messages
@@ -66,7 +66,7 @@ export function MessageBubble({ message, showAvatar = true, isGrouped = false, i
         >
             {/* Avatar for received messages (left side) */}
             {!isSent && showAvatar && (
-                <Avatar className="h-8 w-8 flex-shrink-0 border border-white/10">
+                <Avatar className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 border border-white/10">
                     <AvatarImage src={message.senderAvatar} alt={message.senderName} />
                     <AvatarFallback className="bg-orange-500/20 text-orange-500 text-xs font-semibold">
                         {getInitials(message.senderName)}
@@ -76,13 +76,13 @@ export function MessageBubble({ message, showAvatar = true, isGrouped = false, i
 
             {/* Spacer for grouped messages without avatar */}
             {!isSent && !showAvatar && (
-                <div className="w-8 shrink-0" />
+                <div className="w-7 md:w-8 shrink-0" />
             )}
 
             {/* Message content bubble */}
             <div
                 className={cn(
-                    "flex flex-col max-w-[70%]",
+                    "flex flex-col max-w-[85%] sm:max-w-[75%] md:max-w-[70%]",
                     isSent && "items-end"
                 )}
             >
@@ -97,7 +97,7 @@ export function MessageBubble({ message, showAvatar = true, isGrouped = false, i
                 {/* The actual message bubble */}
                 <div
                     className={cn(
-                        "px-4 py-2.5 rounded-2xl break-words",
+                        "px-3 py-2 md:px-4 md:py-2.5 rounded-2xl break-words",
                         // Sent message styling - orange gradient
                         isSent && "bg-gradient-to-br from-orange-500 to-orange-600 text-white",
                         // Received message styling - dark gray
@@ -106,7 +106,7 @@ export function MessageBubble({ message, showAvatar = true, isGrouped = false, i
                         "shadow-lg"
                     )}
                 >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">
                         {message.content}
                     </p>
                 </div>

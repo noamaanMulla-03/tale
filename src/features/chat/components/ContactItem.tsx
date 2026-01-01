@@ -58,7 +58,7 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
             onClick={onClick}
             className={cn(
                 // Base styles for the contact item
-                "flex items-center gap-3 p-4 cursor-pointer transition-all duration-200 border-l-2",
+                "flex items-center gap-2 md:gap-3 p-3 md:p-4 cursor-pointer transition-all duration-200 border-l-2",
                 // Hover state
                 "hover:bg-white/5",
                 // Active state - highlighted with orange border
@@ -71,7 +71,7 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
         >
             {/* Avatar with online status indicator (direct) or group icon */}
             <div className="relative shrink-0">
-                <Avatar className="h-12 w-12 border-2 border-white/10">
+                <Avatar className="h-11 w-11 md:h-12 md:w-12 border-2 border-white/10">
                     <AvatarImage src={displayAvatar} alt={displayName} />
                     <AvatarFallback className="bg-orange-500/20 text-orange-500 font-semibold">
                         {/* For groups, show Users icon instead of initials */}

@@ -98,28 +98,28 @@ export function MessageInput({
     }, []);
 
     return (
-        <div className="p-4 border-t border-white/10 bg-[#2a2a2a]/95 backdrop-blur-xl">
-            <div className="flex items-end gap-3">
-                {/* Additional action buttons */}
-                <div className="flex gap-1 pb-2">
+        <div className="p-3 md:p-4 border-t border-white/10 bg-[#2a2a2a]/95 backdrop-blur-xl">
+            <div className="flex items-end gap-2 md:gap-3">
+                {/* Additional action buttons - Hidden on mobile */}
+                <div className="hidden sm:flex gap-1 pb-2">
                     {/* Emoji picker button */}
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="text-gray-400 hover:text-white hover:bg-white/10 h-9 w-9"
+                        className="text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-9 md:w-9"
                         title="Add emoji"
                     >
-                        <Smile className="h-5 w-5" />
+                        <Smile className="h-4 w-4 md:h-5 md:w-5" />
                     </Button>
 
                     {/* File attachment button */}
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="text-gray-400 hover:text-white hover:bg-white/10 h-9 w-9"
+                        className="text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-9 md:w-9"
                         title="Attach file"
                     >
-                        <Paperclip className="h-5 w-5" />
+                        <Paperclip className="h-4 w-4 md:h-5 md:w-5" />
                     </Button>
                 </div>
 
@@ -131,10 +131,10 @@ export function MessageInput({
                         onKeyPress={handleKeyPress}
                         placeholder={placeholder}
                         className={cn(
-                            "min-h-[44px] max-h-[120px] resize-none",
-                            "bg-[#1a1a1a]/50 border-white/10 text-white placeholder:text-gray-500",
+                            "min-h-[40px] md:min-h-[44px] max-h-[100px] md:max-h-[120px] resize-none",
+                            "bg-[#1a1a1a]/50 border-white/10 text-white text-sm md:text-base placeholder:text-gray-500",
                             "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:border-orange-500/50",
-                            "rounded-xl px-4 py-3",
+                            "rounded-xl px-3 py-2 md:px-4 md:py-3",
                             // Hide scrollbar for cleaner look
                             "scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
                         )}
@@ -148,7 +148,7 @@ export function MessageInput({
                     <Button
                         onClick={handleSend}
                         className={cn(
-                            "h-11 w-11 rounded-full",
+                            "h-10 w-10 md:h-11 md:w-11 rounded-full",
                             "bg-gradient-to-br from-orange-500 to-orange-600",
                             "hover:from-orange-600 hover:to-orange-700",
                             "text-white shadow-lg shadow-orange-500/20",
@@ -157,23 +157,23 @@ export function MessageInput({
                         )}
                         title="Send message"
                     >
-                        <Send className="h-5 w-5" />
+                        <Send className="h-4 w-4 md:h-5 md:w-5" />
                     </Button>
                 ) : (
                     // Show voice message button when input is empty
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="text-gray-400 hover:text-white hover:bg-white/10 h-11 w-11 flex-shrink-0"
+                        className="text-gray-400 hover:text-white hover:bg-white/10 h-10 w-10 md:h-11 md:w-11 flex-shrink-0"
                         title="Record voice message"
                     >
-                        <Mic className="h-5 w-5" />
+                        <Mic className="h-4 w-4 md:h-5 md:w-5" />
                     </Button>
                 )}
             </div>
 
-            {/* Hint text */}
-            <p className="text-xs text-gray-600 mt-2 text-center">
+            {/* Hint text - Hidden on mobile */}
+            <p className="text-xs text-gray-600 mt-2 text-center hidden sm:block">
                 Press Enter to send, Shift + Enter for new line
             </p>
         </div>

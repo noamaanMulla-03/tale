@@ -76,12 +76,13 @@ export function ChatHeader({ contact, onOpenGroupInfo, onStartCall }: ChatHeader
     const displayAvatar = isGroupChat ? contact.groupAvatar || '/default-group-avatar.png' : contact.avatar;
 
     return (
-        <div className="h-20 border-b border-white/10 bg-[#2a2a2a]/95 backdrop-blur-xl px-6 flex items-center justify-between">
+        <div className="h-16 md:h-20 border-b border-white/10 bg-[#2a2a2a]/95 backdrop-blur-xl px-3 md:px-6 flex items-center justify-between">
             {/* Left section - Contact/Group info */}
-            <div className="flex items-center gap-3">
+            {/* Mobile: Extra left margin for back button */}
+            <div className="flex items-center gap-2 md:gap-3 ml-8 md:ml-0 flex-1 min-w-0">
                 {/* Avatar with online indicator (only for direct messages) */}
-                <div className="relative">
-                    <Avatar className="h-12 w-12 border-2 border-white/10">
+                <div className="relative flex-shrink-0">
+                    <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 border-white/10">
                         <AvatarImage src={displayAvatar} alt={displayName} />
                         <AvatarFallback className="bg-orange-500/20 text-orange-500 font-semibold">
                             {/* For groups, show Users icon instead of initials */}
@@ -95,55 +96,55 @@ export function ChatHeader({ contact, onOpenGroupInfo, onStartCall }: ChatHeader
 
                     {/* Online status indicator dot (only for direct messages) */}
                     {!isGroupChat && contact.online && (
-                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#2a2a2a] rounded-full" />
+                        <div className="absolute bottom-0 right-0 w-3 h-3 md:w-3.5 md:h-3.5 bg-green-500 border-2 border-[#2a2a2a] rounded-full" />
                     )}
                 </div>
 
                 {/* Contact/Group name and status */}
                 <div className="flex-1 min-w-0">
-                    <h2 className="text-white font-semibold text-lg truncate">
+                    <h2 className="text-white font-semibold text-base md:text-lg truncate">
                         {displayName}
                     </h2>
-                    <p className={`text-xs ${getStatusColor()}`}>
+                    <p className={`text-xs ${getStatusColor()} truncate`}>
                         {getStatusText()}
                     </p>
                 </div>
             </div>
 
             {/* Right section - Action buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
                 {/* Group Info button (only for groups) */}
                 {isGroupChat && onOpenGroupInfo && (
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={onOpenGroupInfo}
-                        className="text-gray-400 hover:text-white hover:bg-white/10"
+                        className="text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-10 md:w-10"
                         title="Group info"
                     >
-                        <Info className="h-5 w-5" />
+                        <Info className="h-4 w-4 md:h-5 md:w-5" />
                     </Button>
                 )}
 
-                {/* Search in conversation button */}
+                {/* Search in conversation button - Hidden on mobile */}
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="text-gray-400 hover:text-white hover:bg-white/10"
+                    className="text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-10 md:w-10 hidden md:flex"
                     title="Search in conversation"
                 >
-                    <Search className="h-5 w-5" />
+                    <Search className="h-4 w-4 md:h-5 md:w-5" />
                 </Button>
 
-                {/* Voice call button (only for direct messages) */}
+                {/* Voice call button (only for direct messages) - Hidden on mobile */}
                 {!isGroupChat && (
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="text-gray-400 hover:text-white hover:bg-white/10"
+                        className="text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-10 md:w-10 hidden md:flex"
                         title="Voice call"
                     >
-                        <Phone className="h-5 w-5" />
+                        <Phone className="h-4 w-4 md:h-5 md:w-5" />
                     </Button>
                 )}
 
@@ -153,10 +154,10 @@ export function ChatHeader({ contact, onOpenGroupInfo, onStartCall }: ChatHeader
                         variant="ghost"
                         size="icon"
                         onClick={onStartCall}
-                        className="text-gray-400 hover:text-white hover:bg-white/10"
+                        className="text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-10 md:w-10"
                         title="Video call"
                     >
-                        <Video className="h-5 w-5" />
+                        <Video className="h-4 w-4 md:h-5 md:w-5" />
                     </Button>
                 )}
 
@@ -166,9 +167,9 @@ export function ChatHeader({ contact, onOpenGroupInfo, onStartCall }: ChatHeader
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="text-gray-400 hover:text-white hover:bg-white/10"
+                            className="text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-10 md:w-10"
                         >
-                            <MoreVertical className="h-5 w-5" />
+                            <MoreVertical className="h-4 w-4 md:h-5 md:w-5" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
