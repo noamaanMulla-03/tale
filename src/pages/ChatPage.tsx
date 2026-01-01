@@ -14,7 +14,7 @@ import { VideoCallWindow } from '@/features/chat/components/VideoCallWindow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, LogOut, Settings, User, UserPlus, X, Users as UsersIcon, Edit3, Menu, ArrowLeft } from 'lucide-react';
+import { Search, LogOut, Settings, User, UserPlus, X, Users as UsersIcon, Edit3, ArrowLeft } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import useChatStore from '@/store/useChatStore';
 import { useNavigate } from 'react-router-dom';
