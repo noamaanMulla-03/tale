@@ -7,7 +7,6 @@
 
 import { io, Socket } from 'socket.io-client';
 import API_URL, { WS_URL } from '@/config';
-import { Message } from '@/types/chat';
 import { MessageResponse } from '@/features/chat/services/chat';
 
 // ============================================================================

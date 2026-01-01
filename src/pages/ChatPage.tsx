@@ -59,7 +59,7 @@ import { createOrGetConversation, MessageResponse } from '@/features/chat/servic
  * This ensures incoming WebSocket messages have the correct structure
  * Includes runtime validation to catch production issues
  */
-const convertMessageResponseToMessage = (msg: any): Message => {
+const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
     // Log the raw message for debugging
     console.log('[convertMessageResponseToMessage] Input:', msg);
 
@@ -70,21 +70,21 @@ const convertMessageResponseToMessage = (msg: any): Message => {
     }
 
     // Ensure created_at exists and is valid
-    const timestamp = msg.created_at || msg.timestamp || new Date().toISOString();
+    const timestamp = msg.created_at || new Date().toISOString();
 
     // Build the message object with fallbacks
     const convertedMessage: Message = {
         id: msg.id,
-        senderId: msg.sender_id || msg.senderId || 0,
-        senderName: msg.sender_display_name || msg.senderName || 'Unknown User',
-        senderAvatar: msg.sender_avatar_url || msg.senderAvatar || '/default-avatar.png',
+        senderId: msg.sender_id,
+        senderName: msg.sender_display_name || 'Unknown User',
+        senderAvatar: msg.sender_avatar_url || '/default-avatar.png',
         content: msg.content || '',
         timestamp: timestamp,
         read: true, // Assume read if we're viewing it
-        type: msg.message_type || msg.type || 'text',
-        fileUrl: msg.file_url || msg.fileUrl || null,
-        fileName: msg.file_name || msg.fileName || null,
-        isEdited: msg.is_edited || msg.isEdited || false,
+        type: msg.message_type,
+        fileUrl: msg.file_url,
+        fileName: msg.file_name,
+        isEdited: msg.is_edited,
     };
 
     console.log('[convertMessageResponseToMessage] Output:', convertedMessage);
