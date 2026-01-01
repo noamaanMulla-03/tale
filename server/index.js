@@ -317,16 +317,16 @@ io.on('connection', (socket) => {
      */
     socket.on('disconnect', () => {
         console.log(`[-] Socket disconnected: ${socket.id}`);
-Remove from online users set
-            onlineUsers.delete(socket.userId);
 
-            // Broadcast offline status to all OTHER clients
-            socket.broadcastcket.userId) {
+        if (socket.userId) {
             // Remove from user sockets map
             userSockets.delete(socket.userId);
 
-            // Broadcast offline status to all clients
-            io.emit('user_offline', {
+            // Remove from online users set
+            onlineUsers.delete(socket.userId);
+
+            // Broadcast offline status to all OTHER clients
+            socket.broadcast.emit('user_offline', {
                 userId: socket.userId
             });
 
