@@ -698,6 +698,28 @@ const chatModel = {
     },
 
     /**
+     * Get ALL participants in a conversation (including current user)
+     * Returns: Array of participant objects with user_id
+     * Used for: WebSocket - broadcasting messages to all participants for multi-device sync
+     */
+    getConversationParticipants: async (conversationId) => {
+        const queryText = `
+            SELECT user_id 
+            FROM conversation_participants 
+            WHERE conversation_id = $1
+        `;
+        const queryParams = [conversationId];
+
+        try {
+            const res = await query(queryText, queryParams);
+            return res.rows;
+        } catch (err) {
+            console.error(`[-] Error getting conversation participants: ${err.message}`);
+            throw err;
+        }
+    },
+
+    /**
      * Check if message belongs to user
      * Returns: Boolean
      * Used for: Authorization - only message sender can edit/delete
