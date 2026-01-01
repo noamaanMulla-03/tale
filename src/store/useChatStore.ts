@@ -176,57 +176,29 @@ interface ChatState {
  * - Includes participant count, description, creator ID
  */
 const convertConversationToContact = (conv: ConversationResponse): Contact => {
-    // Determine if this is a group or direct conversation
     const isGroup = conv.conversation_type === 'group';
 
-    // Ensure timestamp is valid - use last_message_time, then updated_at, then current time
-    let timestamp = conv.last_message_time || conv.updated_at;
-
-    // Validate the timestamp - if invalid, use current time
-    if (!timestamp) {
-        console.warn('[convertConversationToContact] No timestamp found for conversation:', conv.conversation_id);
-        timestamp = new Date().toISOString();
-    } else {
-        // Test if timestamp is valid
-        const testDate = new Date(timestamp);
-        if (isNaN(testDate.getTime())) {
-            console.error('[convertConversationToContact] Invalid timestamp:', {
-                conversationId: conv.conversation_id,
-                timestamp,
-                type: typeof timestamp
-            });
-            timestamp = new Date().toISOString();
-        }
-    }
+    // Ensure timestamp is valid
+    const timestamp = conv.last_message_time || conv.updated_at || new Date().toISOString();
 
     return {
-        // ID field: for groups use conversation_id, for direct use other_user_id
         id: isGroup ? conv.conversation_id : (conv.other_user_id ?? 0),
         conversationId: conv.conversation_id,
         conversationType: conv.conversation_type as 'direct' | 'group',
-
-        // For direct messages: Use other user's info
-        // For groups: Use placeholder values (will be overridden by group fields)
         name: isGroup ? (conv.group_name || 'Unnamed Group') : (conv.other_display_name ?? 'Unknown'),
         username: isGroup ? '' : (conv.other_username ?? ''),
         avatar: isGroup
             ? (conv.group_avatar || '/default-group-avatar.png')
             : (conv.other_avatar_url || '/default-avatar.png'),
-
-        // Group-specific fields
         groupName: conv.group_name,
         groupAvatar: conv.group_avatar,
         groupDescription: conv.group_description,
         groupCreatorId: conv.group_creator_id,
         participantCount: conv.participant_count,
-
-        // Common fields
         lastMessage: conv.last_message_content || '',
-        timestamp: timestamp, // Use validated timestamp
+        timestamp: timestamp,
         unread: conv.unread_count,
-
-        // Online status (only meaningful for direct messages)
-        online: false, // Will be updated via WebSocket
+        online: false,
     };
 };
 
@@ -337,23 +309,6 @@ const useChatStore = create<ChatState>((set, get) => ({
     },
 
     updateConversation: (conversationId, updates) => {
-        // Log conversation updates for debugging
-        console.log('[useChatStore] updateConversation:', {
-            conversationId,
-            updates,
-            timestampInUpdates: updates.timestamp,
-            timestampType: typeof updates.timestamp
-        });
-
-        // Validate timestamp if present
-        if (updates.timestamp) {
-            const testDate = new Date(updates.timestamp);
-            if (isNaN(testDate.getTime())) {
-                console.error('[useChatStore] Invalid timestamp in updates, using current time:', updates.timestamp);
-                updates = { ...updates, timestamp: new Date().toISOString() };
-            }
-        }
-
         set((state) => ({
             conversations: state.conversations.map(conv =>
                 conv.conversationId === conversationId
@@ -385,8 +340,6 @@ const useChatStore = create<ChatState>((set, get) => ({
                     [conversationId]: messages
                 }
             }));
-
-            console.log(`[+] Loaded ${messages.length} messages for conversation ${conversationId}`);
         } catch (error) {
             console.error('[!] Error fetching messages:', error);
             throw error;
@@ -410,8 +363,6 @@ const useChatStore = create<ChatState>((set, get) => ({
             // Add message to state (optimistic update)
             // Note: addMessage already calls updateConversation internally
             get().addMessage(conversationId, message);
-
-            console.log(`[+] Sent message to conversation ${conversationId}`);
         } catch (error) {
             console.error('[!] Error sending message:', error);
             throw error;
@@ -422,33 +373,15 @@ const useChatStore = create<ChatState>((set, get) => ({
     },
 
     addMessage: (conversationId, message) => {
-        // Log the message being added for debugging
-        console.log('[useChatStore] addMessage called:', {
-            conversationId,
-            messageId: message.id,
-            timestamp: message.timestamp,
-            timestampType: typeof message.timestamp,
-            content: message.content?.substring(0, 50)
-        });
-
-        // Validate timestamp before proceeding
-        if (!message.timestamp) {
-            console.error('[useChatStore] Message missing timestamp, using current time:', message);
-            message = { ...message, timestamp: new Date().toISOString() };
-        }
-
         set((state) => {
-            // Get existing messages for this conversation
             const existingMessages = state.messages[conversationId] || [];
 
             // Check if message already exists (prevent duplicates)
             const messageExists = existingMessages.some(m => m.id === message.id);
             if (messageExists) {
-                console.log('[useChatStore] Duplicate message prevented:', message.id);
                 return state;
             }
 
-            // Add new message to end of array
             return {
                 messages: {
                     ...state.messages,
@@ -458,16 +391,10 @@ const useChatStore = create<ChatState>((set, get) => ({
         });
 
         // Update conversation in sidebar with new last message
-        // Wrap in try-catch to prevent crashes from corrupting store state
-        try {
-            console.log('[useChatStore] Updating conversation timestamp:', message.timestamp);
-            get().updateConversation(conversationId, {
-                lastMessage: message.content,
-                timestamp: message.timestamp,
-            });
-        } catch (error) {
-            console.error('[useChatStore] Error updating conversation:', error);
-        }
+        get().updateConversation(conversationId, {
+            lastMessage: message.content,
+            timestamp: message.timestamp,
+        });
     },
 
     updateMessage: (conversationId, messageId, updates) => {
@@ -510,8 +437,6 @@ const useChatStore = create<ChatState>((set, get) => ({
 
             // Recalculate total unread count
             get().updateUnreadCount();
-
-            console.log(`[+] Marked conversation ${conversationId} as read`);
         } catch (error) {
             console.error('[!] Error marking conversation as read:', error);
             // Don't throw - this is a background operation

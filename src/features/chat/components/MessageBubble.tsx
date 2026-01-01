@@ -36,20 +36,16 @@ export function MessageBubble({ message, showAvatar = true, isGrouped = false, i
     };
 
     // Format timestamp to show time (e.g., "2:30 PM")
-    // Add error handling to prevent crashes from invalid timestamps
     let formattedTime = '';
     try {
         const date = new Date(message.timestamp);
-        // Check if date is valid before formatting
         if (!isNaN(date.getTime())) {
             formattedTime = format(date, 'p');
         } else {
-            console.error('Invalid timestamp in message:', message.timestamp);
-            formattedTime = 'Invalid date';
+            formattedTime = 'Now';
         }
     } catch (error) {
-        console.error('Error formatting timestamp:', error, 'Message:', message);
-        formattedTime = 'Invalid date';
+        formattedTime = 'Now';
     }
 
     // **FIX**: Determine if message is sent by current user

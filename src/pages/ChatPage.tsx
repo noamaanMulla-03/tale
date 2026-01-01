@@ -56,39 +56,21 @@ import { createOrGetConversation, MessageResponse } from '@/features/chat/servic
 
 /**
  * Helper function to convert MessageResponse (from backend/WebSocket) to Message type
- * This ensures incoming WebSocket messages have the correct structure
- * Includes runtime validation to catch production issues
  */
 const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
-    // Log the raw message for debugging
-    console.log('[convertMessageResponseToMessage] Input:', msg);
-
-    // Validate that we have the essential fields
-    if (!msg || typeof msg !== 'object') {
-        console.error('[ChatPage] Invalid message received:', msg);
-        throw new Error('Invalid message object received from WebSocket');
-    }
-
-    // Ensure created_at exists and is valid
-    const timestamp = msg.created_at || new Date().toISOString();
-
-    // Build the message object with fallbacks
-    const convertedMessage: Message = {
+    return {
         id: msg.id,
         senderId: msg.sender_id,
-        senderName: msg.sender_display_name || 'Unknown User',
+        senderName: msg.sender_display_name,
         senderAvatar: msg.sender_avatar_url || '/default-avatar.png',
         content: msg.content || '',
-        timestamp: timestamp,
-        read: true, // Assume read if we're viewing it
+        timestamp: msg.created_at,
+        read: true,
         type: msg.message_type,
         fileUrl: msg.file_url,
         fileName: msg.file_name,
         isEdited: msg.is_edited,
     };
-
-    console.log('[convertMessageResponseToMessage] Output:', convertedMessage);
-    return convertedMessage;
 };
 
 function ChatPage() {
@@ -180,35 +162,15 @@ function ChatPage() {
         // ====================================================================
 
         // Listen for new messages
-        // Convert MessageResponse from backend to Message type before adding to store
         const cleanupNewMessage = onNewMessage(({ conversationId, message }) => {
-            // Log incoming message for debugging production issues
-            console.log('[ChatPage] Received new_message event:', { conversationId, message });
-
-            try {
-                const convertedMessage = convertMessageResponseToMessage(message);
-                console.log('[ChatPage] Converted message:', convertedMessage);
-                addMessage(conversationId, convertedMessage);
-                console.log('[ChatPage] Message added successfully');
-            } catch (error) {
-                console.error('[ChatPage] Error converting/adding message:', error);
-                console.error('[ChatPage] Raw message data:', JSON.stringify(message, null, 2));
-                // Show error notification to user
-                toast.error('Failed to receive message. Please refresh the page.');
-            }
+            const convertedMessage = convertMessageResponseToMessage(message);
+            addMessage(conversationId, convertedMessage);
         });
 
         // Listen for message edits
-        // Convert MessageResponse from backend to Message type before updating store
         const cleanupMessageEdited = onMessageEdited(({ conversationId, message }) => {
-            console.log('[ChatPage] Received message_edited event:', { conversationId, message });
-
-            try {
-                const convertedMessage = convertMessageResponseToMessage(message);
-                updateMessage(conversationId, convertedMessage.id, convertedMessage);
-            } catch (error) {
-                console.error('[ChatPage] Error converting/updating edited message:', error);
-            }
+            const convertedMessage = convertMessageResponseToMessage(message);
+            updateMessage(conversationId, convertedMessage.id, convertedMessage);
         });
 
         // Listen for message deletions
@@ -345,27 +307,10 @@ function ChatPage() {
     };
 
     // Filter contacts based on search query
-    // Also validate and fix any invalid timestamps to prevent crashes
-    const filteredContacts = conversations
-        .map(contact => {
-            // Validate timestamp - if invalid, use current time
-            if (!contact.timestamp || isNaN(new Date(contact.timestamp).getTime())) {
-                console.warn('[ChatPage] Invalid contact timestamp, fixing:', {
-                    conversationId: contact.conversationId,
-                    name: contact.name,
-                    timestamp: contact.timestamp
-                });
-                return {
-                    ...contact,
-                    timestamp: new Date().toISOString()
-                };
-            }
-            return contact;
-        })
-        .filter(contact =>
-            contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            contact.username.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+    const filteredContacts = conversations.filter(contact =>
+        contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contact.username.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     // Handle logout
     const handleLogout = () => {

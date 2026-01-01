@@ -34,29 +34,14 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
     };
 
     // Format the timestamp to relative time (e.g., "5 minutes ago")
-    // Add error handling to prevent crashes from invalid timestamps
-    let formattedTime = '';
+    let formattedTime = 'Just now';
     try {
         const date = new Date(contact.timestamp);
-        // Check if date is valid before formatting
         if (!isNaN(date.getTime())) {
             formattedTime = formatDistanceToNow(date, { addSuffix: false });
-        } else {
-            console.error('[ContactItem] Invalid timestamp:', {
-                conversationId: contact.conversationId,
-                timestamp: contact.timestamp,
-                timestampType: typeof contact.timestamp,
-                contactName: contact.name
-            });
-            formattedTime = 'Just now';
         }
     } catch (error) {
-        console.error('[ContactItem] Error formatting contact timestamp:', {
-            error,
-            timestamp: contact.timestamp,
-            conversationId: contact.conversationId
-        });
-        formattedTime = 'Just now';
+        // Fallback to 'Just now' on error
     }
 
     // Determine if this is a group chat
