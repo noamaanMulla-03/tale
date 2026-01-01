@@ -100,7 +100,7 @@ const useAuthStore = create<SessionState>()(
             }),
 
             // callback when rehydration is complete
-            onRehydrateStorage: (state) => {
+            onRehydrateStorage: () => {
                 // return a function that will be called after rehydration
                 return () => {
                     // use set to properly update the store state
