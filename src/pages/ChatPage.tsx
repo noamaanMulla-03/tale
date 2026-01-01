@@ -59,7 +59,10 @@ import { createOrGetConversation, MessageResponse } from '@/features/chat/servic
  * This ensures incoming WebSocket messages have the correct structure
  * Includes runtime validation to catch production issues
  */
-const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
+const convertMessageResponseToMessage = (msg: any): Message => {
+    // Log the raw message for debugging
+    console.log('[convertMessageResponseToMessage] Input:', msg);
+
     // Validate that we have the essential fields
     if (!msg || typeof msg !== 'object') {
         console.error('[ChatPage] Invalid message received:', msg);
@@ -67,25 +70,25 @@ const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
     }
 
     // Ensure created_at exists and is valid
-    if (!msg.created_at) {
-        console.error('[ChatPage] Message missing created_at timestamp:', msg);
-        // Use current timestamp as fallback
-        msg.created_at = new Date().toISOString();
-    }
+    const timestamp = msg.created_at || msg.timestamp || new Date().toISOString();
 
-    return {
+    // Build the message object with fallbacks
+    const convertedMessage: Message = {
         id: msg.id,
-        senderId: msg.sender_id,
-        senderName: msg.sender_display_name || 'Unknown User',
-        senderAvatar: msg.sender_avatar_url || '/default-avatar.png',
+        senderId: msg.sender_id || msg.senderId || 0,
+        senderName: msg.sender_display_name || msg.senderName || 'Unknown User',
+        senderAvatar: msg.sender_avatar_url || msg.senderAvatar || '/default-avatar.png',
         content: msg.content || '',
-        timestamp: msg.created_at, // Convert created_at to timestamp
+        timestamp: timestamp,
         read: true, // Assume read if we're viewing it
-        type: msg.message_type || 'text',
-        fileUrl: msg.file_url,
-        fileName: msg.file_name,
-        isEdited: msg.is_edited || false,
+        type: msg.message_type || msg.type || 'text',
+        fileUrl: msg.file_url || msg.fileUrl || null,
+        fileName: msg.file_name || msg.fileName || null,
+        isEdited: msg.is_edited || msg.isEdited || false,
     };
+
+    console.log('[convertMessageResponseToMessage] Output:', convertedMessage);
+    return convertedMessage;
 };
 
 function ChatPage() {
@@ -186,8 +189,10 @@ function ChatPage() {
                 const convertedMessage = convertMessageResponseToMessage(message);
                 console.log('[ChatPage] Converted message:', convertedMessage);
                 addMessage(conversationId, convertedMessage);
+                console.log('[ChatPage] Message added successfully');
             } catch (error) {
                 console.error('[ChatPage] Error converting/adding message:', error);
+                console.error('[ChatPage] Raw message data:', JSON.stringify(message, null, 2));
                 // Show error notification to user
                 toast.error('Failed to receive message. Please refresh the page.');
             }

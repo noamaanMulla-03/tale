@@ -181,7 +181,7 @@ const convertConversationToContact = (conv: ConversationResponse): Contact => {
 
     // Ensure timestamp is valid - use last_message_time, then updated_at, then current time
     let timestamp = conv.last_message_time || conv.updated_at;
-    
+
     // Validate the timestamp - if invalid, use current time
     if (!timestamp) {
         console.warn('[convertConversationToContact] No timestamp found for conversation:', conv.conversation_id);
