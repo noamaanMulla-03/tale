@@ -29,6 +29,7 @@ const useAuthStore = create<SessionState>()(
                     isAuthenticated: true,
                     user: user,
                     token: token,
+                    isHydrated: true, // mark as hydrated when logging in
                 });
                 // store token in secure storage (macOS Keychain)
                 secureStorage.setItem('token', token).catch(console.error);
@@ -99,12 +100,11 @@ const useAuthStore = create<SessionState>()(
             }),
 
             // callback when rehydration is complete
-            onRehydrateStorage: () => {
-                return (state, error) => {
-                    if (!error && state) {
-                        // mark store as hydrated once state is loaded from storage
-                        state.isHydrated = true;
-                    }
+            onRehydrateStorage: (state) => {
+                // return a function that will be called after rehydration
+                return () => {
+                    // use set to properly update the store state
+                    useAuthStore.setState({ isHydrated: true });
                 };
             }
         }
