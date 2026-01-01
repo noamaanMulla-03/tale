@@ -42,10 +42,20 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
         if (!isNaN(date.getTime())) {
             formattedTime = formatDistanceToNow(date, { addSuffix: false });
         } else {
+            console.error('[ContactItem] Invalid timestamp:', {
+                conversationId: contact.conversationId,
+                timestamp: contact.timestamp,
+                timestampType: typeof contact.timestamp,
+                contactName: contact.name
+            });
             formattedTime = 'Just now';
         }
     } catch (error) {
-        console.error('Error formatting contact timestamp:', error);
+        console.error('[ContactItem] Error formatting contact timestamp:', {
+            error,
+            timestamp: contact.timestamp,
+            conversationId: contact.conversationId
+        });
         formattedTime = 'Just now';
     }
 
