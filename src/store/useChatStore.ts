@@ -547,7 +547,7 @@ const useChatStore = create<ChatState>((set, get) => ({
 
             console.log(`[ChatStore] User ${userId} is now online. Updated ${updatedConversations.filter(c => c.online && c.conversationType === 'direct').length} direct conversations.`);
 
-            return { 
+            return {
                 onlineUsers: newOnlineUsers,
                 conversations: updatedConversations
             };
@@ -571,7 +571,7 @@ const useChatStore = create<ChatState>((set, get) => ({
 
             console.log(`[ChatStore] Received initial online users list: ${userIds.length} users online. Updated ${updatedConversations.filter(c => c.online && c.conversationType === 'direct').length} direct conversations.`);
 
-            return { 
+            return {
                 onlineUsers: newOnlineUsers,
                 conversations: updatedConversations
             };
@@ -597,7 +597,7 @@ const useChatStore = create<ChatState>((set, get) => ({
 
             console.log(`[ChatStore] User ${userId} is now offline. Updated ${updatedConversations.filter(c => !c.online && c.conversationType === 'direct').length} direct conversations.`);
 
-            return { 
+            return {
                 onlineUsers: newOnlineUsers,
                 conversations: updatedConversations
             };
