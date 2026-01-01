@@ -8,6 +8,7 @@
 import { io, Socket } from 'socket.io-client';
 import API_URL, { WS_URL } from '@/config';
 import { Message } from '@/types/chat';
+import { MessageResponse } from '@/features/chat/services/chat';
 
 // ============================================================================
 // SOCKET INSTANCE
@@ -194,11 +195,13 @@ export const emitStopTyping = (conversationId: number): void => {
 
 /**
  * Listen for new messages in conversations
+ * NOTE: Backend sends MessageResponse format, not Message format
+ * The callback receives raw backend data that needs conversion
  * @param callback - Function to call when new message arrives
  * @returns Cleanup function to remove listener
  */
 export const onNewMessage = (
-    callback: (data: { conversationId: number; message: Message }) => void
+    callback: (data: { conversationId: number; message: MessageResponse }) => void
 ): (() => void) => {
     if (!socket) {
         console.error('[-] Cannot add listener: Socket not initialized');
@@ -215,11 +218,13 @@ export const onNewMessage = (
 
 /**
  * Listen for message edits
+ * NOTE: Backend sends MessageResponse format, not Message format
+ * The callback receives raw backend data that needs conversion
  * @param callback - Function to call when message is edited
  * @returns Cleanup function to remove listener
  */
 export const onMessageEdited = (
-    callback: (data: { conversationId: number; message: Message }) => void
+    callback: (data: { conversationId: number; message: MessageResponse }) => void
 ): (() => void) => {
     if (!socket) {
         return () => { };

@@ -57,20 +57,34 @@ import { createOrGetConversation, MessageResponse } from '@/features/chat/servic
 /**
  * Helper function to convert MessageResponse (from backend/WebSocket) to Message type
  * This ensures incoming WebSocket messages have the correct structure
+ * Includes runtime validation to catch production issues
  */
 const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
+    // Validate that we have the essential fields
+    if (!msg || typeof msg !== 'object') {
+        console.error('[ChatPage] Invalid message received:', msg);
+        throw new Error('Invalid message object received from WebSocket');
+    }
+
+    // Ensure created_at exists and is valid
+    if (!msg.created_at) {
+        console.error('[ChatPage] Message missing created_at timestamp:', msg);
+        // Use current timestamp as fallback
+        msg.created_at = new Date().toISOString();
+    }
+
     return {
         id: msg.id,
         senderId: msg.sender_id,
-        senderName: msg.sender_display_name,
+        senderName: msg.sender_display_name || 'Unknown User',
         senderAvatar: msg.sender_avatar_url || '/default-avatar.png',
         content: msg.content || '',
         timestamp: msg.created_at, // Convert created_at to timestamp
         read: true, // Assume read if we're viewing it
-        type: msg.message_type,
+        type: msg.message_type || 'text',
         fileUrl: msg.file_url,
         fileName: msg.file_name,
-        isEdited: msg.is_edited,
+        isEdited: msg.is_edited || false,
     };
 };
 
@@ -165,15 +179,31 @@ function ChatPage() {
         // Listen for new messages
         // Convert MessageResponse from backend to Message type before adding to store
         const cleanupNewMessage = onNewMessage(({ conversationId, message }) => {
-            const convertedMessage = convertMessageResponseToMessage(message as MessageResponse);
-            addMessage(conversationId, convertedMessage);
+            // Log incoming message for debugging production issues
+            console.log('[ChatPage] Received new_message event:', { conversationId, message });
+
+            try {
+                const convertedMessage = convertMessageResponseToMessage(message);
+                console.log('[ChatPage] Converted message:', convertedMessage);
+                addMessage(conversationId, convertedMessage);
+            } catch (error) {
+                console.error('[ChatPage] Error converting/adding message:', error);
+                // Show error notification to user
+                toast.error('Failed to receive message. Please refresh the page.');
+            }
         });
 
         // Listen for message edits
         // Convert MessageResponse from backend to Message type before updating store
         const cleanupMessageEdited = onMessageEdited(({ conversationId, message }) => {
-            const convertedMessage = convertMessageResponseToMessage(message as MessageResponse);
-            updateMessage(conversationId, convertedMessage.id, convertedMessage);
+            console.log('[ChatPage] Received message_edited event:', { conversationId, message });
+
+            try {
+                const convertedMessage = convertMessageResponseToMessage(message);
+                updateMessage(conversationId, convertedMessage.id, convertedMessage);
+            } catch (error) {
+                console.error('[ChatPage] Error converting/updating edited message:', error);
+            }
         });
 
         // Listen for message deletions
