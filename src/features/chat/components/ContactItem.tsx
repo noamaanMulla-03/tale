@@ -34,7 +34,20 @@ export function ContactItem({ contact, isActive, onClick }: ContactItemProps) {
     };
 
     // Format the timestamp to relative time (e.g., "5 minutes ago")
-    const formattedTime = formatDistanceToNow(new Date(contact.timestamp), { addSuffix: false });
+    // Add error handling to prevent crashes from invalid timestamps
+    let formattedTime = '';
+    try {
+        const date = new Date(contact.timestamp);
+        // Check if date is valid before formatting
+        if (!isNaN(date.getTime())) {
+            formattedTime = formatDistanceToNow(date, { addSuffix: false });
+        } else {
+            formattedTime = 'Just now';
+        }
+    } catch (error) {
+        console.error('Error formatting contact timestamp:', error);
+        formattedTime = 'Just now';
+    }
 
     // Determine if this is a group chat
     const isGroupChat = contact.conversationType === 'group';

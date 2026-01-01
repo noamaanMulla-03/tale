@@ -3,7 +3,7 @@
 // Fully integrated with backend API and WebSocket for real-time features
 
 import { useState, useRef, useEffect } from 'react';
-import { Contact } from '@/types/chat';
+import { Contact, Message } from '@/types/chat';
 import { ContactItem } from '@/features/chat/components/ContactItem';
 import { ChatHeader } from '@/features/chat/components/ChatHeader';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
@@ -52,7 +52,27 @@ import {
 } from '@/lib/webrtc';
 import { toast } from 'sonner';
 import { searchUsers, UserSearchResult } from '@/features/auth/services/user';
-import { createOrGetConversation } from '@/features/chat/services/chat';
+import { createOrGetConversation, MessageResponse } from '@/features/chat/services/chat';
+
+/**
+ * Helper function to convert MessageResponse (from backend/WebSocket) to Message type
+ * This ensures incoming WebSocket messages have the correct structure
+ */
+const convertMessageResponseToMessage = (msg: MessageResponse): Message => {
+    return {
+        id: msg.id,
+        senderId: msg.sender_id,
+        senderName: msg.sender_display_name,
+        senderAvatar: msg.sender_avatar_url || '/default-avatar.png',
+        content: msg.content || '',
+        timestamp: msg.created_at, // Convert created_at to timestamp
+        read: true, // Assume read if we're viewing it
+        type: msg.message_type,
+        fileUrl: msg.file_url,
+        fileName: msg.file_name,
+        isEdited: msg.is_edited,
+    };
+};
 
 function ChatPage() {
     // Get user info and logout function from auth store
@@ -143,13 +163,17 @@ function ChatPage() {
         // ====================================================================
 
         // Listen for new messages
+        // Convert MessageResponse from backend to Message type before adding to store
         const cleanupNewMessage = onNewMessage(({ conversationId, message }) => {
-            addMessage(conversationId, message);
+            const convertedMessage = convertMessageResponseToMessage(message as MessageResponse);
+            addMessage(conversationId, convertedMessage);
         });
 
         // Listen for message edits
+        // Convert MessageResponse from backend to Message type before updating store
         const cleanupMessageEdited = onMessageEdited(({ conversationId, message }) => {
-            updateMessage(conversationId, message.id, message);
+            const convertedMessage = convertMessageResponseToMessage(message as MessageResponse);
+            updateMessage(conversationId, convertedMessage.id, convertedMessage);
         });
 
         // Listen for message deletions
