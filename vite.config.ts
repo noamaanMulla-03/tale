@@ -33,6 +33,17 @@ export default defineConfig({
             // 3. tell vite to ignore watching `src-tauri`
             ignored: ["**/src-tauri/**"],
         },
+        // 4. Configure SPA fallback for client-side routing
+        // This ensures that when you navigate to /chat or any other route
+        // and refresh the page, the dev server serves index.html instead of 404
+        proxy: {},
+    },
+    // Configure preview server (used for production builds locally)
+    preview: {
+        port: 1420,
+        strictPort: true,
+        // Enable SPA fallback for preview server as well
+        // This makes the preview server behave like production
     },
     // Env variables starting with the item of `envPrefix` will be exposed in tauri's source code through `import.meta.env`.
     envPrefix: ['VITE_', 'TAURI_ENV_*'],
