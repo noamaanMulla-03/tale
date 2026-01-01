@@ -34,6 +34,7 @@ interface SessionState {
     user: User | null;
     token: string | null;
     isAuthenticated: boolean;
+    isHydrated: boolean; // track if persisted state has been loaded
     login: (user: User, token: string) => void;
     logout: () => void;
     checkAuth: () => Promise<boolean>;

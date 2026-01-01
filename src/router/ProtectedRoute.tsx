@@ -6,17 +6,25 @@ import useAuthStore from '@/store/useAuthStore';
 
 const ProtectedRoute = () => {
     // get auth state and actions from store
-    const { isAuthenticated, checkAuth, logout } = useAuthStore();
+    const { isAuthenticated, isHydrated, checkAuth, logout } = useAuthStore();
     // state to track if auth check is in progress
     const [ isChecking, setIsChecking ] = useState(true);
 
     // effect to verify auth status on mount
     useEffect(() => {
-        const verifyAuth = () => {
-            // check if token is valid
-            if(!checkAuth())
-                // if not then logout (clear everything)
+        const verifyAuth = async () => {
+            // wait for store to hydrate from secure storage
+            if (!isHydrated) {
+                return; // don't check auth until store is hydrated
+            }
+
+            // check if token is valid (async operation)
+            const isValid = await checkAuth();
+            
+            if(!isValid) {
+                // if not valid then logout (clear everything)
                 logout();
+            }
 
             // done checking
             setIsChecking(false);
@@ -24,8 +32,8 @@ const ProtectedRoute = () => {
 
         // call the function
         verifyAuth();
-    // dependencies to avoid stale closures
-    }, [checkAuth, logout]); 
+    // dependencies to avoid stale closures - add isHydrated to trigger re-check when hydrated
+    }, [isHydrated, checkAuth, logout]); 
 
     // while checking auth status, render nothing or a loader
     if(isChecking) 

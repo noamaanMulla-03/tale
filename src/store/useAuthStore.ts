@@ -20,6 +20,7 @@ const useAuthStore = create<SessionState>()(
             isAuthenticated: false,
             user: null,
             token: null,
+            isHydrated: false, // track if state has been loaded from storage
 
             // define login action to update the store state
             login: (user, token) => {
@@ -95,7 +96,17 @@ const useAuthStore = create<SessionState>()(
                 user: state.user,
                 token: state.token,
                 isAuthenticated: state.isAuthenticated,
-            })
+            }),
+
+            // callback when rehydration is complete
+            onRehydrateStorage: () => {
+                return (state, error) => {
+                    if (!error && state) {
+                        // mark store as hydrated once state is loaded from storage
+                        state.isHydrated = true;
+                    }
+                };
+            }
         }
     )
 );
