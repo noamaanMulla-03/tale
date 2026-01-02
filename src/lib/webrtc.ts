@@ -225,35 +225,74 @@ const updateCallState = (state: WebRTCState): void => {
 /**
  * Clean up all WebRTC resources
  * Closes peer connection, stops media streams, resets state
+ * IMPORTANT: This is the ONLY place where tracks should be stopped
+ * to prevent race conditions and ensure proper cleanup
  */
 const cleanup = (): void => {
     console.log('[WebRTC] Cleaning up resources');
 
-    // Close peer connection
+    // Close peer connection first to stop any ongoing communication
     if (peerConnection) {
-        peerConnection.close();
+        try {
+            peerConnection.close();
+            console.log('[WebRTC] Peer connection closed');
+        } catch (error) {
+            console.warn('[WebRTC] Error closing peer connection:', error);
+        }
         peerConnection = null;
     }
 
-    // Stop local media stream tracks
+    // Stop all local media stream tracks (camera and microphone)
+    // This releases the hardware resources and turns off camera/mic
     if (localStream) {
-        localStream.getTracks().forEach(track => {
-            track.stop();
-            console.log(`[WebRTC] Stopped local track: ${track.kind}`);
-        });
+        try {
+            localStream.getTracks().forEach(track => {
+                // Only stop if track is not already stopped
+                if (track.readyState !== 'ended') {
+                    track.stop();
+                    console.log(`[WebRTC] Stopped local ${track.kind} track`);
+                } else {
+                    console.log(`[WebRTC] Local ${track.kind} track already stopped`);
+                }
+            });
+        } catch (error) {
+            console.warn('[WebRTC] Error stopping local tracks:', error);
+        }
         localStream = null;
     }
 
-    // Clear remote stream
-    remoteStream = null;
+    // Clear remote stream reference
+    // Remote tracks are owned by peer connection and stopped automatically
+    if (remoteStream) {
+        console.log('[WebRTC] Clearing remote stream reference');
+        remoteStream = null;
+    }
 
-    // Reset state
+    // Reset state variables
     currentCall = null;
     iceCandidateQueue = [];
     remoteDescriptionSet = false;
+    reconnectionAttempts = 0;
 
-    // Notify UI
-    onCallEndedCallback?.();
+    // Clear all callback references to prevent memory leaks
+    // Callbacks will be re-registered if a new call is initiated
+    console.log('[WebRTC] Clearing callback references');
+
+    // Notify UI that call has ended BEFORE clearing the callback
+    // This ensures UI can clean up properly
+    const callEndedCallback = onCallEndedCallback;
+
+    // Clear callbacks to prevent memory leaks
+    onStateChangeCallback = null;
+    onRemoteStreamCallback = null;
+    onLocalStreamCallback = null;
+    onIncomingCallCallback = null;
+    onCallEndedCallback = null;
+
+    // Now notify UI (using the saved reference)
+    callEndedCallback?.();
+
+    console.log('[WebRTC] Cleanup complete');
 };
 
 // ============================================================================
@@ -581,9 +620,11 @@ export const acceptCall = async (): Promise<void> => {
         // Process any queued ICE candidates
         await processIceCandidateQueue();
 
-        // Note: State will be updated to 'connected' by ICE connection state change
-        // Not updating here prevents duplicate state updates and timer issues
-        // The call is truly 'connected' only when ICE negotiation succeeds
+        // Update state to 'connected' immediately after accepting
+        // This allows UI to show call controls and start timer
+        // The peer connection will handle the actual connection state
+        updateCallState('connected');
+        console.log('[WebRTC] Call accepted, state set to connected');
 
     } catch (error) {
         console.error('[WebRTC] Error accepting call:', error);

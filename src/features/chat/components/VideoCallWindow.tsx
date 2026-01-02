@@ -199,11 +199,13 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
 
         // Cleanup function
         return () => {
+            // Unsubscribe from WebRTC events
             unsubscribeLocalStream?.();
             unsubscribeRemoteStream?.();
             unsubscribeStateChange?.();
             unsubscribeCallEnded?.();
 
+            // Clear all timers
             if (timerRef.current) {
                 clearInterval(timerRef.current);
                 timerRef.current = null;
@@ -219,14 +221,11 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
                 hideControlsTimeoutRef.current = null;
             }
 
-            // Stop all media tracks on unmount
-            const localStream = getLocalStream();
-            if (localStream) {
-                localStream.getTracks().forEach(track => {
-                    track.stop();
-                    console.log(`[VideoCallWindow] Stopped ${track.kind} track on unmount`);
-                });
-            }
+            // IMPORTANT: Do NOT stop media tracks here
+            // The WebRTC library (webrtc.ts) handles track cleanup in its cleanup() function
+            // Stopping tracks here causes race conditions and tracks may be stopped twice
+            // Let the endCall() or cleanup() function in webrtc.ts handle all media cleanup
+            console.log('[VideoCallWindow] Component unmounting, cleanup delegated to WebRTC library');
         };
     }, [callState]);
 
@@ -315,19 +314,15 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
     };
 
     /**
-     * Clean up and close window
+     * Clean up UI and close window
+     * IMPORTANT: This function only handles UI cleanup
+     * Media track cleanup is handled by WebRTC library's cleanup() function
+     * to prevent race conditions and ensure proper resource release
      */
     const handleCallEnd = () => {
-        // Stop all media tracks to release camera/microphone
-        const localStream = getLocalStream();
-        if (localStream) {
-            localStream.getTracks().forEach(track => {
-                track.stop();
-                console.log(`[VideoCallWindow] Stopped ${track.kind} track`);
-            });
-        }
+        console.log('[VideoCallWindow] Cleaning up UI and closing window');
 
-        // Clear all timers
+        // Clear all UI timers
         if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
@@ -343,6 +338,15 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
             hideControlsTimeoutRef.current = null;
         }
 
+        // IMPORTANT: Do NOT stop media tracks here
+        // The endCall() function in webrtc.ts calls cleanup() which stops all tracks
+        // Stopping tracks here causes race conditions:
+        // 1. Track may already be stopped by cleanup()
+        // 2. Track may be in 'ended' state, causing errors
+        // 3. Multiple stop() calls can interfere with proper cleanup
+        // Let the WebRTC library handle all media cleanup centrally
+
+        console.log('[VideoCallWindow] UI cleanup complete, closing window');
         onClose();
     };
 
