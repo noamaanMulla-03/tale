@@ -181,10 +181,10 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
          */
         if (callState === 'calling' || callState === 'ringing') {
             const timeoutDuration = 60000; // 60 seconds
-            
+
             callTimeoutRef.current = setTimeout(() => {
                 console.log(`[VideoCallWindow] Call timeout - no response after ${timeoutDuration / 1000} seconds`);
-                
+
                 if (callState === 'ringing' && callInfo.direction === 'incoming') {
                     // Incoming call that wasn't answered - auto-reject
                     console.log('[VideoCallWindow] Auto-rejecting incoming call due to timeout');

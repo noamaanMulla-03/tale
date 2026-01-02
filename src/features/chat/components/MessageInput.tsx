@@ -153,7 +153,7 @@ export function MessageInput({
                             "hover:from-orange-600 hover:to-orange-700",
                             "text-white shadow-lg shadow-orange-500/20",
                             "transition-all duration-200 hover:shadow-orange-500/40",
-                            "flex-shrink-0"
+                            "shrink-0"
                         )}
                         title="Send message"
                     >
@@ -164,7 +164,7 @@ export function MessageInput({
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="text-gray-400 hover:text-white hover:bg-white/10 h-10 w-10 md:h-11 md:w-11 flex-shrink-0"
+                        className="text-gray-400 hover:text-white hover:bg-white/10 h-10 w-10 md:h-11 md:w-11 shrink-0"
                         title="Record voice message"
                     >
                         <Mic className="h-4 w-4 md:h-5 md:w-5" />

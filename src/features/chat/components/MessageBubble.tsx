@@ -66,7 +66,7 @@ export function MessageBubble({ message, showAvatar = true, isGrouped = false, i
         >
             {/* Avatar for received messages (left side) */}
             {!isSent && showAvatar && (
-                <Avatar className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 border border-white/10">
+                <Avatar className="h-7 w-7 md:h-8 md:w-8 shrink-0 border border-white/10">
                     <AvatarImage src={message.senderAvatar} alt={message.senderName} />
                     <AvatarFallback className="bg-orange-500/20 text-orange-500 text-xs font-semibold">
                         {getInitials(message.senderName)}

@@ -101,6 +101,18 @@ let iceCandidateQueue: RTCIceCandidateInit[] = [];
  */
 let remoteDescriptionSet = false;
 
+/**
+ * Reconnection attempt counter for handling temporary network issues
+ * Resets to 0 when connection is successfully established
+ */
+let reconnectionAttempts = 0;
+
+/**
+ * Maximum number of reconnection attempts before giving up
+ * Industry standard: 3-5 attempts over 10-30 seconds
+ */
+const MAX_RECONNECTION_ATTEMPTS = 3;
+
 // ============================================================================
 // CALLBACK HANDLERS
 // ============================================================================
@@ -295,9 +307,24 @@ const getLocalMediaStream = async (
 
         console.log('[WebRTC] User media stream acquired');
         return stream;
-    } catch (error) {
+    } catch (error: any) {
         console.error('[WebRTC] Failed to get user media:', error);
-        throw new Error('Failed to access camera/microphone. Please check permissions.');
+
+        // Provide specific error messages based on error type
+        // This helps users understand what went wrong and how to fix it
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            throw new Error('Camera/microphone access denied. Please grant permissions in your browser settings.');
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            throw new Error('No camera or microphone found. Please connect a device and try again.');
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+            throw new Error('Camera/microphone is already in use by another application. Please close other apps and try again.');
+        } else if (error.name === 'OverconstrainedError') {
+            throw new Error('Camera does not support the requested settings. Please try with a different device.');
+        } else if (error.name === 'TypeError') {
+            throw new Error('Invalid media constraints. Please check your device settings.');
+        } else {
+            throw new Error(`Failed to access camera/microphone: ${error.message || 'Unknown error'}`);
+        }
     }
 };
 
@@ -346,26 +373,55 @@ const createPeerConnection = (): RTCPeerConnection => {
 
     /**
      * Event: 'iceconnectionstatechange'
-     * Monitor ICE connection state for debugging
+     * Monitor ICE connection state for debugging and reconnection
+     * 
+     * Connection states:
+     * - 'new': Initial state
+     * - 'checking': Gathering candidates and checking connectivity
+     * - 'connected': At least one candidate pair is working
+     * - 'completed': All candidates checked, connection established
+     * - 'disconnected': Lost connection, may be temporary (attempt reconnect)
+     * - 'failed': Connection permanently failed
+     * - 'closed': Connection closed
      */
     pc.oniceconnectionstatechange = () => {
         console.log(`[WebRTC] ICE connection state: ${pc.iceConnectionState}`);
 
-        // Handle connection failure
+        // Handle permanent connection failure - no recovery possible
         if (pc.iceConnectionState === 'failed') {
-            console.error('[WebRTC] ICE connection failed');
+            console.error('[WebRTC] ICE connection failed permanently');
             updateCallState('ended');
             cleanup();
+            return;
         }
 
-        // Handle disconnection
+        // Handle temporary disconnection - attempt to reconnect
+        // Network issues can cause temporary disconnections that may recover
         if (pc.iceConnectionState === 'disconnected') {
-            console.warn('[WebRTC] ICE connection disconnected');
+            if (reconnectionAttempts < MAX_RECONNECTION_ATTEMPTS) {
+                reconnectionAttempts++;
+                console.warn(`[WebRTC] ICE connection disconnected - attempting to reconnect (${reconnectionAttempts}/${MAX_RECONNECTION_ATTEMPTS})`);
+
+                // Give connection 5 seconds to recover before checking again
+                // Most temporary network issues resolve within a few seconds
+                setTimeout(() => {
+                    if (pc && (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed')) {
+                        console.error('[WebRTC] Connection did not recover, ending call');
+                        updateCallState('ended');
+                        cleanup();
+                    }
+                }, 5000);
+            } else {
+                console.error('[WebRTC] Max reconnection attempts reached, ending call');
+                updateCallState('ended');
+                cleanup();
+            }
         }
 
-        // Handle successful connection
-        if (pc.iceConnectionState === 'connected') {
+        // Handle successful connection or reconnection
+        if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
             console.log('[WebRTC] ICE connection established');
+            reconnectionAttempts = 0; // Reset counter on successful connection
             updateCallState('connected');
         }
     };
@@ -528,7 +584,7 @@ export const acceptCall = async (): Promise<void> => {
         // Note: State will be updated to 'connected' by ICE connection state change
         // Not updating here prevents duplicate state updates and timer issues
         // The call is truly 'connected' only when ICE negotiation succeeds
-        
+
     } catch (error) {
         console.error('[WebRTC] Error accepting call:', error);
         cleanup();
@@ -734,13 +790,18 @@ export const rejectCall = (): void => {
 
 /**
  * Toggle video on/off during call
+ * Validates that call is active and connected before toggling
  * @param enabled - Enable or disable video
  */
 export const toggleVideo = (enabled: boolean): void => {
-    if (!localStream) {
+    // Validate that we have an active connected call
+    // Toggling video during call setup or after call ends has no effect
+    if (!localStream || !currentCall || currentCall.state !== 'connected') {
+        console.warn('[WebRTC] Cannot toggle video: No active connected call');
         return;
     }
 
+    // Enable/disable all video tracks in the local stream
     localStream.getVideoTracks().forEach(track => {
         track.enabled = enabled;
     });
@@ -750,13 +811,18 @@ export const toggleVideo = (enabled: boolean): void => {
 
 /**
  * Toggle audio on/off during call
+ * Validates that call is active and connected before toggling
  * @param enabled - Enable or disable audio
  */
 export const toggleAudio = (enabled: boolean): void => {
-    if (!localStream) {
+    // Validate that we have an active connected call
+    // Toggling audio during call setup or after call ends has no effect
+    if (!localStream || !currentCall || currentCall.state !== 'connected') {
+        console.warn('[WebRTC] Cannot toggle audio: No active connected call');
         return;
     }
 
+    // Enable/disable all audio tracks in the local stream
     localStream.getAudioTracks().forEach(track => {
         track.enabled = enabled;
     });

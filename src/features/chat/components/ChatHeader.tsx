@@ -81,7 +81,7 @@ export function ChatHeader({ contact, onOpenGroupInfo, onStartCall }: ChatHeader
             {/* Mobile: Extra left margin for back button */}
             <div className="flex items-center gap-2 md:gap-3 ml-8 md:ml-0 flex-1 min-w-0">
                 {/* Avatar with online indicator (only for direct messages) */}
-                <div className="relative flex-shrink-0">
+                <div className="relative shrink-0">
                     <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 border-white/10">
                         <AvatarImage src={displayAvatar} alt={displayName} />
                         <AvatarFallback className="bg-orange-500/20 text-orange-500 font-semibold">
@@ -112,7 +112,7 @@ export function ChatHeader({ contact, onOpenGroupInfo, onStartCall }: ChatHeader
             </div>
 
             {/* Right section - Action buttons */}
-            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 md:gap-2 shrink-0">
                 {/* Group Info button (only for groups) */}
                 {isGroupChat && onOpenGroupInfo && (
                     <Button
