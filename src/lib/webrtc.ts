@@ -324,6 +324,9 @@ const createPeerConnection = (): RTCPeerConnection => {
      * Event: 'icecandidate'
      * Fired when local ICE candidate is generated
      * Send candidate to remote peer via signaling server (Socket.IO)
+     * 
+     * Note: We don't include 'from' field here - the server will automatically
+     * add it based on socket.userId to ensure correct sender identification
      */
     pc.onicecandidate = (event) => {
         if (event.candidate && currentCall) {
@@ -333,10 +336,10 @@ const createPeerConnection = (): RTCPeerConnection => {
             const socket = getSocket();
             socket?.emit('webrtc-signal', {
                 type: 'ice-candidate',
-                from: currentCall.remoteUserId, // Will be set by server
-                to: currentCall.remoteUserId,
+                to: currentCall.remoteUserId,  // Recipient's user ID
                 conversationId: currentCall.conversationId,
                 data: event.candidate.toJSON()
+                // 'from' field omitted - server adds it as socket.userId for correct routing
             });
         }
     };
@@ -522,7 +525,10 @@ export const acceptCall = async (): Promise<void> => {
         // Process any queued ICE candidates
         await processIceCandidateQueue();
 
-        updateCallState('connected');
+        // Note: State will be updated to 'connected' by ICE connection state change
+        // Not updating here prevents duplicate state updates and timer issues
+        // The call is truly 'connected' only when ICE negotiation succeeds
+        
     } catch (error) {
         console.error('[WebRTC] Error accepting call:', error);
         cleanup();

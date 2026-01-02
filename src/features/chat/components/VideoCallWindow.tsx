@@ -173,12 +173,28 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
             handleCallEnd();
         });
 
-        // Set timeout for unanswered outgoing calls (1 minute)
-        if (callState === 'calling' && callInfo.direction === 'outgoing') {
+        /**
+         * Set timeout for unanswered calls (both outgoing and incoming)
+         * - Outgoing calls ('calling'): Auto-end after 60 seconds if no answer
+         * - Incoming calls ('ringing'): Auto-reject after 60 seconds if no user response
+         * This prevents calls from hanging indefinitely and properly releases resources
+         */
+        if (callState === 'calling' || callState === 'ringing') {
+            const timeoutDuration = 60000; // 60 seconds
+            
             callTimeoutRef.current = setTimeout(() => {
-                console.log('[VideoCallWindow] Call timeout - no response after 1 minute');
-                handleEndCall();
-            }, 60000); // 60 seconds
+                console.log(`[VideoCallWindow] Call timeout - no response after ${timeoutDuration / 1000} seconds`);
+                
+                if (callState === 'ringing' && callInfo.direction === 'incoming') {
+                    // Incoming call that wasn't answered - auto-reject
+                    console.log('[VideoCallWindow] Auto-rejecting incoming call due to timeout');
+                    handleRejectCall();
+                } else {
+                    // Outgoing call that wasn't answered - auto-end
+                    console.log('[VideoCallWindow] Auto-ending outgoing call due to timeout');
+                    handleEndCall();
+                }
+            }, timeoutDuration);
         }
 
         // Cleanup function
