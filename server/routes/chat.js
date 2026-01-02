@@ -13,6 +13,7 @@ import chatController from '../controllers/chatController.js';
 
 // Import middleware
 import { authenticateToken } from '../middleware/auth.js';
+import { attachmentUpload, imageUpload } from '../middleware/uploadExtended.js';
 
 // Initialize router
 const router = express.Router();
@@ -66,6 +67,22 @@ router.get('/conversations/:conversationId/messages', chatController.getConversa
  * Returns: Created message object
  */
 router.post('/conversations/:conversationId/messages', chatController.sendMessage);
+
+/**
+ * POST /api/chat/upload/attachment
+ * Upload a file attachment (document, video, audio, etc.)
+ * Body: FormData with 'file' field
+ * Returns: { fileUrl, fileName, fileSize, fileType }
+ */
+router.post('/upload/attachment', attachmentUpload.single('file'), chatController.uploadAttachment);
+
+/**
+ * POST /api/chat/upload/image
+ * Upload an image file
+ * Body: FormData with 'file' field
+ * Returns: { fileUrl, fileName, fileSize, fileType }
+ */
+router.post('/upload/image', imageUpload.single('file'), chatController.uploadImage);
 
 /**
  * PATCH /api/chat/messages/:messageId

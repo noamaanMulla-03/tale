@@ -5,7 +5,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Smile, Paperclip, Mic } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, toastError } from '@/lib/utils';
+import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
+import { FileAttachmentDialog } from './FileAttachmentDialog';
+import { sendFileMessage } from '../services/chatApi';
 
 interface MessageInputProps {
     onSendMessage: (message: string) => void;
@@ -28,8 +31,16 @@ export function MessageInput({
     const [message, setMessage] = useState('');
     // State for typing indicator
     const [isTyping, setIsTyping] = useState(false);
+    // State for emoji picker visibility
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    // State for file attachment dialog
+    const [showFileDialog, setShowFileDialog] = useState(false);
     // Timer ref for typing indicator
     const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+    // Ref for emoji picker container (for click outside detection)
+    const emojiPickerRef = useRef<HTMLDivElement>(null);
+    // Ref for textarea to restore focus after emoji selection
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Handle send message
     const handleSend = () => {
@@ -97,8 +108,98 @@ export function MessageInput({
         };
     }, []);
 
+    // Handle click outside emoji picker to close it
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+                setShowEmojiPicker(false);
+            }
+        }
+
+        if (showEmojiPicker) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => {
+                document.removeEventListener('mousedown', handleClickOutside);
+            };
+        }
+    }, [showEmojiPicker]);
+
+    // Handle emoji selection
+    const handleEmojiClick = (emojiData: EmojiClickData) => {
+        // Insert emoji at cursor position or end of text
+        const textarea = textareaRef.current;
+        if (textarea) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const newMessage = message.substring(0, start) + emojiData.emoji + message.substring(end);
+            setMessage(newMessage);
+
+            // Restore focus and cursor position after emoji
+            setTimeout(() => {
+                textarea.focus();
+                const newCursorPos = start + emojiData.emoji.length;
+                textarea.setSelectionRange(newCursorPos, newCursorPos);
+            }, 0);
+        } else {
+            // Fallback: append emoji to end
+            setMessage(prev => prev + emojiData.emoji);
+        }
+
+        // Keep picker open for multiple emoji selections
+        // User can click outside or on emoji button again to close
+    };
+
+    // Toggle emoji picker
+    const toggleEmojiPicker = () => {
+        setShowEmojiPicker(prev => !prev);
+    };
+
+    // Handle file attachment
+    const handleSendFile = async (file: File, caption?: string) => {
+        if (!conversationId) {
+            toastError('Error', 'No conversation selected');
+            return;
+        }
+
+        try {
+            // Send file message (uploads file and sends message)
+            await sendFileMessage(conversationId, file, caption);
+
+            // Note: The message will appear via WebSocket 'newMessage' event
+            // No need to manually update UI here
+        } catch (error) {
+            console.error('Failed to send file:', error);
+            toastError('Failed to send file', error instanceof Error ? error.message : 'Unknown error');
+            throw error; // Re-throw to let FileAttachmentDialog handle it
+        }
+    };
+
     return (
-        <div className="p-3 md:p-4 border-t border-white/10 bg-[#2a2a2a]/95 backdrop-blur-xl">
+        <div className="p-3 md:p-4 border-t border-white/10 bg-[#2a2a2a]/95 backdrop-blur-xl relative">
+            {/* File Attachment Dialog */}
+            <FileAttachmentDialog
+                open={showFileDialog}
+                onClose={() => setShowFileDialog(false)}
+                onSendFile={handleSendFile}
+            />
+
+            {/* Emoji Picker Popover */}
+            {showEmojiPicker && (
+                <div
+                    ref={emojiPickerRef}
+                    className="absolute bottom-full left-4 mb-2 z-50 shadow-2xl"
+                >
+                    <EmojiPicker
+                        onEmojiClick={handleEmojiClick}
+                        theme={Theme.DARK}
+                        width={350}
+                        height={400}
+                        searchPlaceHolder="Search emoji..."
+                        previewConfig={{ showPreview: false }}
+                    />
+                </div>
+            )}
+
             <div className="flex items-end gap-2 md:gap-3">
                 {/* Additional action buttons - Hidden on mobile */}
                 <div className="hidden sm:flex gap-1 pb-2">
@@ -106,7 +207,11 @@ export function MessageInput({
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-9 md:w-9"
+                        onClick={toggleEmojiPicker}
+                        className={cn(
+                            "text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-9 md:w-9",
+                            showEmojiPicker && "bg-white/10 text-white"
+                        )}
                         title="Add emoji"
                     >
                         <Smile className="h-4 w-4 md:h-5 md:w-5" />
@@ -116,6 +221,7 @@ export function MessageInput({
                     <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => setShowFileDialog(true)}
                         className="text-gray-400 hover:text-white hover:bg-white/10 h-8 w-8 md:h-9 md:w-9"
                         title="Attach file"
                     >
@@ -126,6 +232,7 @@ export function MessageInput({
                 {/* Message text input */}
                 <div className="flex-1 relative">
                     <Textarea
+                        ref={textareaRef}
                         value={message}
                         onChange={handleChange}
                         onKeyPress={handleKeyPress}

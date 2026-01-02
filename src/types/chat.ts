@@ -26,10 +26,12 @@ export interface Message {
 
     // Message type (text, image, file, voice)
     type: 'text' | 'image' | 'file' | 'voice';
+    messageType?: 'text' | 'image' | 'file' | 'voice' | 'video' | 'audio'; // Alias for compatibility
 
     // File attachment data (for non-text messages)
     fileUrl?: string | null;
     fileName?: string | null;
+    fileSize?: number | null;
 
     // Edit tracking
     isEdited?: boolean;

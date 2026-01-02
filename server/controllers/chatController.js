@@ -14,6 +14,9 @@ import chatModel from "../models/chatModel.js";
 // Import Redis service for caching and real-time features
 import redisService from "../services/redisService.js";
 
+// Import file upload helpers
+import { getFileUrl } from "../middleware/uploadExtended.js";
+
 // Chat controller object
 const chatController = {
 
@@ -748,6 +751,76 @@ const chatController = {
 
             // Respond with participants
             res.status(200).json({ participants });
+        } catch (err) {
+            // Pass errors to error handling middleware
+            next(err);
+        }
+    },
+
+    // ========================================================================
+    // FILE UPLOAD ENDPOINTS
+    // ========================================================================
+
+    /**
+     * POST /api/chat/upload/attachment
+     * Upload a file attachment (document, video, audio, archive, etc.)
+     * Uses multer middleware to handle multipart/form-data
+     * Body: FormData with 'file' field
+     * Returns: { fileUrl, fileName, fileSize, fileType }
+     */
+    uploadAttachment: async (req, res, next) => {
+        try {
+            // Check if file was uploaded
+            if (!req.file) {
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
+
+            // Get file details from multer
+            const { filename, originalname, size, mimetype } = req.file;
+
+            // Generate file URL
+            const fileUrl = getFileUrl(filename, 'attachment');
+
+            // Return file information
+            res.status(200).json({
+                fileUrl,
+                fileName: originalname,
+                fileSize: size,
+                fileType: mimetype,
+            });
+        } catch (err) {
+            // Pass errors to error handling middleware
+            next(err);
+        }
+    },
+
+    /**
+     * POST /api/chat/upload/image
+     * Upload an image file
+     * Uses multer middleware to handle multipart/form-data
+     * Body: FormData with 'file' field
+     * Returns: { fileUrl, fileName, fileSize, fileType }
+     */
+    uploadImage: async (req, res, next) => {
+        try {
+            // Check if file was uploaded
+            if (!req.file) {
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
+
+            // Get file details from multer
+            const { filename, originalname, size, mimetype } = req.file;
+
+            // Generate file URL
+            const fileUrl = getFileUrl(filename, 'attachment');
+
+            // Return file information
+            res.status(200).json({
+                fileUrl,
+                fileName: originalname,
+                fileSize: size,
+                fileType: mimetype,
+            });
         } catch (err) {
             // Pass errors to error handling middleware
             next(err);

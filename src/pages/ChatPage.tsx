@@ -27,6 +27,8 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toastError } from '@/lib/utils';
+import { notifications } from '@/lib/notifications';
 import {
     connectSocket,
     disconnectSocket,
@@ -154,6 +156,18 @@ function ChatPage() {
             console.error('Failed to load conversations:', err);
         });
 
+        // Request notification permission on first load
+        // Only requests if not already granted or denied
+        notifications.requestPermission().then(granted => {
+            if (granted) {
+                console.log('[Notifications] Permission granted');
+            } else {
+                console.log('[Notifications] Permission denied or not supported');
+            }
+        }).catch(err => {
+            console.error('[Notifications] Error requesting permission:', err);
+        });
+
         // Cleanup on unmount (but don't disconnect - we handle that on logout)
         return () => {
             // Leave any active conversation
@@ -188,6 +202,49 @@ function ChatPage() {
             // Add message to store
             // addMessage handles duplicate prevention automatically
             addMessage(conversationId, convertedMessage);
+
+            // Show desktop notification for messages from other users
+            if (message.sender_id !== parseInt(user?.id || '0')) {
+                // Find the conversation to get sender details
+                const conversation = conversations.find(c => c.conversationId === conversationId);
+
+                if (conversation) {
+                    const senderName = message.sender_username || conversation.name;
+                    const messageContent = message.message_type === 'text'
+                        ? message.content || ''
+                        : `Sent ${message.message_type}`;
+
+                    // Show notification based on conversation type
+                    if (conversation.conversationType === 'group') {
+                        notifications.groupMessage(
+                            conversation.name,
+                            message.sender_username || 'Unknown',
+                            messageContent,
+                            {
+                                avatar: conversation.avatar,
+                                conversationId,
+                                onClick: () => {
+                                    // Focus conversation when notification is clicked
+                                    setSelectedConversation(conversationId);
+                                }
+                            }
+                        );
+                    } else {
+                        notifications.newMessage(
+                            senderName,
+                            messageContent,
+                            {
+                                avatar: conversation.avatar,
+                                conversationId,
+                                onClick: () => {
+                                    // Focus conversation when notification is clicked
+                                    setSelectedConversation(conversationId);
+                                }
+                            }
+                        );
+                    }
+                }
+            }
         });
 
         // Listen for message edits
@@ -344,7 +401,10 @@ function ChatPage() {
             });
         } catch (error) {
             console.error('Failed to send message:', error);
-            // TODO: Show error notification to user
+
+            // Show user-friendly error notification
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            toastError('Failed to send message', errorMessage);
         }
     };
 
