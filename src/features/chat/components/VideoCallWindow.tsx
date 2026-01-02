@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAvatarUrl } from '@/lib/avatar';
+import { toastError } from '@/lib/utils';
 import {
     getLocalStream,
     getRemoteStream,
@@ -148,19 +149,29 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
             }
         });
 
-        // Listen for call state changes
+        // Listen for call state changes from WebRTC library
+        // This is the critical callback that updates UI when call state transitions
+        // States: 'calling' → 'ringing' → 'connected' → 'ended'
         const unsubscribeStateChange = onStateChange((state) => {
-            console.log(`[VideoCallWindow] Call state changed: ${state}`);
+            console.log(`[VideoCallWindow] ===== CALL STATE CHANGED: ${callState} → ${state} =====`);
+            
+            // Update local state - this triggers re-render
+            // When state changes from 'ringing' to 'connected', the component will re-render
+            // and show the full video call UI instead of the accept/reject screen
             setCallState(state);
 
             // Clear call timeout when call connects
+            // No need to auto-end call after connection is established
             if (state === 'connected' && callTimeoutRef.current) {
+                console.log('[VideoCallWindow] Call connected, clearing timeout');
                 clearTimeout(callTimeoutRef.current);
                 callTimeoutRef.current = null;
             }
 
             // Start timer when call connects
+            // Shows call duration in UI (00:00, 00:01, 00:02, etc.)
             if (state === 'connected' && !timerRef.current) {
+                console.log('[VideoCallWindow] Starting call duration timer');
                 timerRef.current = setInterval(() => {
                     setCallDuration(prev => prev + 1);
                 }, 1000);
@@ -359,13 +370,30 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
 
     /**
      * Accept incoming call
+     * Flow: User clicks accept → acceptCall() starts → Media stream acquired → 
+     * Peer connection created → Answer sent → State updates to 'connected' → 
+     * UI transitions from ringing screen to video call interface
      */
     const handleAcceptCall = async () => {
+        console.log('[VideoCallWindow] Accept button clicked');
         try {
+            // Call the WebRTC library's acceptCall function
+            // This will:
+            // 1. Get local media stream (camera + microphone)
+            // 2. Create peer connection
+            // 3. Set remote description (offer from caller)
+            // 4. Create and send answer
+            // 5. Update state to 'connected'
             await acceptCall();
-            console.log('[VideoCallWindow] Call accepted');
+            console.log('[VideoCallWindow] Call accepted successfully, waiting for state update');
+            
+            // Note: State will be updated via onStateChange callback
+            // The VideoCallWindow will re-render when callState changes from 'ringing' to 'connected'
+            // This will transition from the accept/reject screen to the full video call UI
         } catch (error) {
             console.error('[VideoCallWindow] Error accepting call:', error);
+            // Show error to user and close call window
+            toastError('Could not accept the call. Please check your camera and microphone permissions.');
             handleCallEnd();
         }
     };
@@ -407,9 +435,19 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
     // ========================================================================
     // RENDER
     // ========================================================================
+    // Component has 3 main render modes based on call state:
+    // 1. Incoming call (ringing + incoming) - Shows accept/reject buttons
+    // 2. Minimized (isMinimized = true) - Small floating window  
+    // 3. Full screen (connected/calling) - Main video call interface
+    // ========================================================================
 
-    // Incoming call - Full screen modal with ringtone-like feel
+    console.log(`[VideoCallWindow] Rendering with state: ${callState}, direction: ${callInfo.direction}, minimized: ${isMinimized}`);
+
+    // MODE 1: Incoming call - Full screen modal with accept/reject buttons
+    // Only shown when: state is 'ringing' AND direction is 'incoming'
+    // After accepting, state changes to 'connected' and this screen is no longer shown
     if (callState === 'ringing' && callInfo.direction === 'incoming') {
+        console.log('[VideoCallWindow] Rendering incoming call screen (ringing + incoming)');
         return (
             <div className="fixed inset-0 z-[100] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center animate-in fade-in duration-300">
                 {/* Background blur effect */}
@@ -471,8 +509,10 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
         );
     }
 
-    // Minimized view - Floating window
+    // MODE 2: Minimized view - Floating window
+    // Shows small pip-style window in bottom right corner
     if (isMinimized) {
+        console.log('[VideoCallWindow] Rendering minimized floating window');
         return (
             <div className="fixed bottom-4 right-4 w-80 rounded-2xl overflow-hidden shadow-2xl z-[100] animate-in slide-in-from-bottom-4 duration-300">
                 <div className="relative bg-gray-900 border border-gray-700">
@@ -569,7 +609,10 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
         );
     }
 
-    // Full screen call view
+    // MODE 3: Full screen call view
+    // Shows main video call interface with controls
+    // Displayed when: state is 'calling', 'connected', or other states (not incoming ringing)
+    console.log('[VideoCallWindow] Rendering full screen call view');
     return (
         <div
             className="fixed inset-0 z-[100] bg-black"
