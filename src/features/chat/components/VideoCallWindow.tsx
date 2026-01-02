@@ -307,10 +307,13 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
 
     /**
      * End call and close window
+     * Note: endCall() will trigger cleanup() which calls onCallEnded callback
+     * The callback will then invoke handleCallEnd() to clean up UI
      */
     const handleEndCall = () => {
         endCall();
-        handleCallEnd();
+        // Don't call handleCallEnd() here - it will be called via onCallEnded callback
+        // to ensure proper sequencing: cleanup() happens first, then UI closes
     };
 
     /**
@@ -346,8 +349,12 @@ export const VideoCallWindow = ({ callInfo, onClose }: VideoCallWindowProps) => 
         // 3. Multiple stop() calls can interfere with proper cleanup
         // Let the WebRTC library handle all media cleanup centrally
 
-        console.log('[VideoCallWindow] UI cleanup complete, closing window');
-        onClose();
+        // Add a small delay before closing to ensure track.stop() completes
+        // track.stop() is synchronous but may need a moment to release hardware
+        setTimeout(() => {
+            console.log('[VideoCallWindow] UI cleanup complete, closing window');
+            onClose();
+        }, 100);
     };
 
     /**
