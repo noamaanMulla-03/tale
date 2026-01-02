@@ -16,6 +16,9 @@ dotenv.config({ path: join(__dirname, '../.env') });
 // import db connection
 import { pool } from './db.js';
 
+// Import Redis service for presence and real-time features
+import redisService from './services/redisService.js';
+
 // import auth routes
 import authRoutes from './routes/auth.js';
 // import chat routes
@@ -101,15 +104,23 @@ pool.query('SELECT NOW()')
 // ============================================================================
 // Handle real-time events for chat functionality
 // Events: connection, disconnect, typing, stop_typing, join_conversation
+// 
+// OPTIMIZED VERSION: Now uses Redis for presence and state management
+// Benefits:
+// - User presence persists across server restarts
+// - Typing indicators auto-expire (no cleanup needed)
+// - Scalable to multiple server instances (via Redis Pub/Sub)
 // ============================================================================
 
 // Store user socket connections for quick lookup
 // Format: { userId: socketId }
+// NOTE: This is in-memory per server instance
+// For multi-server setup, use Redis for socket mapping
 const userSockets = new Map();
 
-// Store online users (user IDs)
-// This tracks which users are currently connected
-// Format: Set of user IDs
+// Online users are now tracked in Redis (not in-memory Set)
+// This allows presence to persist and scale across multiple servers
+// Legacy in-memory set kept for backward compatibility and quick lookups
 const onlineUsers = new Set();
 
 // Socket.IO connection handler
@@ -124,18 +135,28 @@ io.on('connection', (socket) => {
      * Event: 'authenticate'
      * Client sends userId to register their socket connection
      * Join user-specific room for receiving targeted messages
+     * 
+     * OPTIMIZED: Now uses Redis for presence tracking
      */
-    socket.on('authenticate', (userId) => {
+    socket.on('authenticate', async (userId) => {
         if (!userId) {
             console.error('[-] Authentication failed: No userId provided');
             return;
         }
 
-        // Store user's socket ID for lookup
+        // Store user's socket ID for lookup (in-memory for this server)
         userSockets.set(userId, socket.id);
         
-        // Add user to online users set
+        // Add user to local online users set (backward compatibility)
         onlineUsers.add(userId);
+        
+        // ================================================================
+        // REDIS PRESENCE TRACKING (NEW!)
+        // ================================================================
+        // Set user as online in Redis with 5-minute TTL
+        // Client should send heartbeat every 30 seconds to maintain status
+        // Auto-expires if client disconnects without cleanup
+        await redisService.setUserOnline(userId);
         
         // Join user-specific room (format: user_123)
         // Used to send messages to specific users
@@ -146,10 +167,16 @@ io.on('connection', (socket) => {
         
         console.log(`[+] User ${userId} authenticated and joined room: user_${userId}`);
 
-        // CRITICAL: Send list of currently online users to the newly connected client
-        // This ensures the client knows who is already online when they connect
+        // ================================================================
+        // SEND ONLINE USERS LIST
+        // ================================================================
+        // Get online users from Redis (source of truth)
+        // This works across multiple server instances
+        const onlineUserIds = await redisService.getOnlineUsers();
+        
+        // Send to newly connected client
         socket.emit('online_users_list', {
-            userIds: Array.from(onlineUsers)
+            userIds: onlineUserIds
         });
 
         // Broadcast to ALL other clients that this user is now online
@@ -188,20 +215,29 @@ io.on('connection', (socket) => {
     });
 
     // ========================================================================
-    // TYPING INDICATORS
+    // TYPING INDICATORS (OPTIMIZED WITH REDIS)
     // ========================================================================
     
     /**
      * Event: 'typing'
      * Client notifies others in conversation that user is typing
-     * Broadcast to all other users in the conversation
+     * 
+     * OPTIMIZED: Now uses Redis with auto-expiration
+     * - Stores typing state in Redis with 10-second TTL
+     * - No need for manual cleanup if client disconnects
+     * - Supports multi-server deployments
      */
-    socket.on('typing', ({ conversationId, username }) => {
-        if (!conversationId) {
+    socket.on('typing', async ({ conversationId, username }) => {
+        if (!conversationId || !socket.userId) {
             return;
         }
 
+        // Store typing state in Redis with 10-second auto-expiration
+        // Client should send this event every 3-5 seconds while actively typing
+        await redisService.setTyping(conversationId, socket.userId, username);
+
         // Broadcast to conversation room except sender
+        // All clients in the conversation will see the typing indicator
         socket.to(`conversation_${conversationId}`).emit('user_typing', {
             conversationId,
             username,
@@ -212,11 +248,17 @@ io.on('connection', (socket) => {
     /**
      * Event: 'stop_typing'
      * Client notifies others that user stopped typing
+     * 
+     * OPTIMIZED: Immediately removes from Redis
      */
-    socket.on('stop_typing', ({ conversationId }) => {
-        if (!conversationId) {
+    socket.on('stop_typing', async ({ conversationId }) => {
+        if (!conversationId || !socket.userId) {
             return;
         }
+
+        // Remove typing state from Redis immediately
+        // Don't wait for auto-expiration
+        await redisService.stopTyping(conversationId, socket.userId);
 
         // Broadcast to conversation room except sender
         socket.to(`conversation_${conversationId}`).emit('user_stop_typing', {
@@ -307,25 +349,36 @@ io.on('connection', (socket) => {
     });
 
     // ========================================================================
-    // DISCONNECTION
+    // DISCONNECTION (OPTIMIZED WITH REDIS)
     // ========================================================================
     
     /**
      * Event: 'disconnect'
      * Automatically fired when socket connection is lost
      * Clean up user data and broadcast offline status
+     * 
+     * OPTIMIZED: Now uses Redis for presence cleanup
+     * - Sets user offline in Redis across all servers
+     * - Removes from online users set
+     * - Typing indicators auto-expire via TTL (no manual cleanup needed)
      */
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
         console.log(`[-] Socket disconnected: ${socket.id}`);
 
         if (socket.userId) {
-            // Remove from user sockets map
+            // ================================================================
+            // REDIS PRESENCE CLEANUP
+            // ================================================================
+            // Set user as offline in Redis (persists across server restarts)
+            // This updates the global presence state
+            await redisService.setUserOffline(socket.userId);
+            
+            // Remove from local in-memory maps (this server instance only)
             userSockets.delete(socket.userId);
-
-            // Remove from online users set
             onlineUsers.delete(socket.userId);
 
             // Broadcast offline status to all OTHER clients
+            // Connected clients will update their UI to show user as offline
             socket.broadcast.emit('user_offline', {
                 userId: socket.userId
             });

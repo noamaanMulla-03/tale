@@ -6,13 +6,12 @@ import crypto from "crypto";
 import sgMail from "@sendgrid/mail";
 import generateOTPEmailTemplate from "./OTPTemplate.js";
 import "dotenv/config";
-import Redis from "ioredis";
+
+// Import centralized Redis service for all Redis operations
+import redisService from "../services/redisService.js";
 
 // Initialize SendGrid with API key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-// temporary map for otp (USE REDIS IN PROD)
-const redis = new Redis(process.env.REDIS_URL);
 
 // generate random 6-digit OTP for email verification
 const generateEmailOTP = () => crypto.randomInt(100000, 999999).toString();
@@ -99,41 +98,42 @@ const userController = {
 
         if(!email) return res.status(400).json({error: "Email is required!"});
         
-        // max 3 requests
+        // ====================================================================
+        // RATE LIMITING (Using centralized Redis service)
+        // ====================================================================
+        // Prevents spam: Max 3 OTP requests per 15 minutes
+        // Uses Redis counter with TTL for automatic cleanup
+        // ====================================================================
         const RATE_LIMIT = 3; 
-        // per 15 minutes in seconds
-        const RATE_LIMIT_WINDOW = 15 * 60; 
-        // initialize rate limit key with email
-        const rateLimitKey = `otp_rate_limit:${email}`;
+        const RATE_LIMIT_WINDOW = 15 * 60; // 15 minutes in seconds
+        
+        // Increment rate limit counter (auto-expires after window)
+        const currentRequests = await redisService.incrementRateLimit(email, RATE_LIMIT_WINDOW);
 
-        // increment request count
-        const currentRequests = await redis.incr(rateLimitKey);
-
-        // if current requests === 1, set expiration
-        if (currentRequests === 1) await redis.expire(rateLimitKey, RATE_LIMIT_WINDOW);
-
-        // check if rate limit exceeded
+        // Check if rate limit exceeded
         if (currentRequests > RATE_LIMIT) {
-            // get time to live for the key
-            const ttl = await redis.ttl(rateLimitKey);
-            // convert ttl to minutes and seconds
+            // Get remaining time until rate limit resets
+            const ttl = await redisService.getRateLimitTTL(email);
             const minutes = Math.floor(ttl / 60);
             const seconds = ttl % 60;
 
-            // return rate limit error with time to wait
-            return res.status(429).json({ error: `Too many OTP requests. Please try again in ${minutes} minutes and ${seconds} seconds.` });
+            // Return 429 Too Many Requests with helpful message
+            return res.status(429).json({ 
+                error: `Too many OTP requests. Please try again in ${minutes} minutes and ${seconds} seconds.` 
+            });
         }
 
+        // ====================================================================
+        // GENERATE AND SEND OTP
+        // ====================================================================
         const OTP = generateEmailOTP();
 
         try {
             const emailTemplate = generateOTPEmailTemplate(OTP);
 
-            // REDIS CHANGE: Set key with Expiration (EX) in seconds
-            // key: "otp:user@email.com"
-            // value: "123456"
-            // options: EX 300 (5 minutes)
-            await redis.set(`otp:${email}`, OTP, 'EX', 300);
+            // Store OTP in Redis with 5-minute expiration
+            // Using centralized service for consistent key naming
+            await redisService.storeOTP(email, OTP);
             
             // Send email via SendGrid
             await sgMail.send({
@@ -154,23 +154,39 @@ const userController = {
     // Verify OTP 
     verifyOTP: async (req, res, next) => {
         const { email, otp } = req.body;
-
-        // basic validation
-        if(!email || !otp) return res.status(400).json({error: "Email and OTP are required!"});
+        // ====================================================================
+        // VALIDATE INPUT
+        // ====================================================================
+        if(!email || !otp) {
+            return res.status(400).json({error: "Email and OTP are required!"});
+        }
 
         try {
-            // REDIS CHANGE: Retrieve the OTP
-            const storedOTP = await redis.get(`otp:${email}`);
+            // ====================================================================
+            // RETRIEVE AND VERIFY OTP (Using Redis service)
+            // ====================================================================
+            // OTP auto-expires after 5 minutes in Redis
+            const storedOTP = await redisService.getOTP(email);
 
-            // check if OTP exists
-            if (!storedOTP) return res.status(400).json({error: "OTP invalid or expired. Please request a new one."});
+            // Check if OTP exists (null if expired or never created)
+            if (!storedOTP) {
+                return res.status(400).json({
+                    error: "OTP invalid or expired. Please request a new one."
+                });
+            }
 
-            // Check if OTP matches
-            if (storedOTP !== otp) return res.status(400).json({error: "Invalid OTP."});
+            // Check if OTP matches (simple string comparison)
+            if (storedOTP !== otp) {
+                return res.status(400).json({error: "Invalid OTP."});
+            }
 
-            // OTP is valid - clear it and update user
-            await redis.del(`otp:${email}`);
+            // ====================================================================
+            // OTP IS VALID - Delete it and update user
+            // ====================================================================
+            // Delete OTP to prevent reuse (one-time use only)
+            await redisService.deleteOTP(email);
 
+            // Update user's email_verified status in PostgreSQL
             // Update user's email_verified status in database
             await userModel.verifyUserEmail(email);
 
